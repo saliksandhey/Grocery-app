@@ -1,22 +1,22 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '../store';
 import {
   LayoutDashboard, ShoppingBag, Package, Users, Plus, X,
   Edit, Trash2, Tag, TrendingUp, Clock, CheckCircle2,
   Truck, ChevronRight, Search, Bell, LogOut,
-  BarChart3, RefreshCw, Star, Menu, IndianRupee,
-  AlertCircle, ImageIcon
+  Settings, BarChart2, Menu, AlertCircle
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 /* â”€â”€â”€ constants â”€â”€â”€ */
 const statusMeta = {
-  Pending:              { bg: 'rgba(245,158,11,0.15)', color: '#f59e0b', dot: '#f59e0b' },
-  Accepted:             { bg: 'rgba(59,130,246,0.15)',  color: '#60a5fa', dot: '#3b82f6' },
-  Preparing:            { bg: 'rgba(139,92,246,0.15)', color: '#a78bfa', dot: '#8b5cf6' },
-  'Ready for Delivery': { bg: 'rgba(109,40,217,0.15)',  color: '#c084fc', dot: '#6d28d9' },
-  'Out for Delivery':   { bg: 'rgba(249,115,22,0.15)', color: '#fb923c', dot: '#f97316' },
-  Delivered:            { bg: 'rgba(16,185,129,0.15)', color: '#34d399', dot: '#8b5cf6' },
+  Pending:              { bg: '#FEF3C7', color: '#D97706', dot: '#D97706' },
+  Accepted:             { bg: '#DBEAFE', color: '#2563EB', dot: '#2563EB' },
+  Preparing:            { bg: '#E0E7FF', color: '#4F46E5', dot: '#4F46E5' },
+  'Ready for Delivery': { bg: '#F3E8FF', color: '#9333EA', dot: '#9333EA' },
+  'Out for Delivery':   { bg: '#FFEDD5', color: '#EA580C', dot: '#EA580C' },
+  Delivered:            { bg: '#D1FAE5', color: '#059669', dot: '#059669' },
+  Cancelled:            { bg: '#FEE2E2', color: '#DC2626', dot: '#DC2626' },
 };
 
 const NAV = [
@@ -24,18 +24,21 @@ const NAV = [
   { id: 'orders',     label: 'Orders',       icon: ShoppingBag },
   { id: 'products',   label: 'Products',     icon: Package },
   { id: 'categories', label: 'Categories',   icon: Tag },
+  { id: 'users',      label: 'Users',        icon: Users },
   { id: 'delivery',   label: 'Delivery Boys',icon: Truck },
+  { id: 'analytics',  label: 'Analytics',    icon: BarChart2 },
+  { id: 'settings',   label: 'Settings',     icon: Settings },
 ];
 
 /* â”€â”€â”€ sub-components â”€â”€â”€ */
 const StatusBadge = ({ status }) => {
-  const m = statusMeta[status] || { bg: 'rgba(100,116,139,0.2)', color: '#94a3b8', dot: '#64748b' };
+  const m = statusMeta[status] || { bg: '#F1F5F9', color: '#64748B', dot: '#64748B' };
   return (
     <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: '5px',
-      padding: '3px 10px', borderRadius: '20px',
+      display: 'inline-flex', alignItems: 'center', gap: '6px',
+      padding: '4px 10px', borderRadius: '12px',
       background: m.bg, color: m.color,
-      fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.04em',
+      fontSize: '0.75rem', fontWeight: 600,
       whiteSpace: 'nowrap',
     }}>
       <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: m.dot, display: 'inline-block', flexShrink: 0 }} />
@@ -48,17 +51,16 @@ const IconBtn = ({ color, onClick, children }) => (
   <button onClick={onClick} style={{
     width: '32px', height: '32px',
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    background: color === 'blue' ? 'rgba(59,130,246,0.15)' : 'rgba(239,68,68,0.15)',
-    color: color === 'blue' ? '#60a5fa' : '#f87171',
-    border: `1px solid ${color === 'blue' ? 'rgba(59,130,246,0.25)' : 'rgba(239,68,68,0.25)'}`,
-    borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit',
+    background: color === 'blue' ? '#DBEAFE' : color === 'red' ? '#FEE2E2' : '#F1F5F9',
+    color: color === 'blue' ? '#2563EB' : color === 'red' ? '#DC2626' : '#475569',
+    border: 'none', borderRadius: '8px', cursor: 'pointer',
     transition: 'all 0.15s', flexShrink: 0,
   }}>{children}</button>
 );
 
 const Field = ({ label, children }) => (
   <div>
-    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, marginBottom: '7px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '6px', color: '#374151' }}>
       {label}
     </label>
     {children}
@@ -66,17 +68,18 @@ const Field = ({ label, children }) => (
 );
 
 const mInput = {
-  width: '100%', padding: '11px 14px',
-  background: 'rgba(15,23,42,0.8)',
-  border: '1px solid rgba(255,255,255,0.1)',
-  borderRadius: '10px', outline: 'none',
-  color: '#e2e8f0', fontSize: '0.875rem',
+  width: '100%', padding: '10px 14px',
+  background: '#F9FAFB',
+  border: '1px solid #D1D5DB',
+  borderRadius: '8px', outline: 'none',
+  color: '#111827', fontSize: '0.875rem',
   fontFamily: 'inherit',
+  transition: 'border-color 0.2s'
 };
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â•  */
 export default function Admin() {
-  const [activeTab,   setActiveTab]   = useState('orders');
+  const [activeTab,   setActiveTab]   = useState('dashboard');
   const [drawerOpen,  setDrawerOpen]  = useState(false);
   const [isMobile,    setIsMobile]    = useState(window.innerWidth < 768);
   const [searchQ,     setSearchQ]     = useState('');
@@ -183,55 +186,60 @@ export default function Admin() {
 
   /* derived */
   const q = searchQ.toLowerCase();
-  const filteredOrders   = orders.filter(o => o.customer_details?.name?.toLowerCase().includes(q) || o.id?.toLowerCase().includes(q));
-  const filteredProducts = products.filter(p => p.name?.toLowerCase().includes(q) || p.category?.toLowerCase().includes(q));
+  const filteredOrders   = orders.filter(o => (o.customer_details?.name||'').toLowerCase().includes(q) || (o.id||'').toLowerCase().includes(q));
+  const filteredProducts = products.filter(p => (p.name||'').toLowerCase().includes(q) || (p.category||'').toLowerCase().includes(q));
   const pendingCount    = orders.filter(o => o.status === 'Pending').length;
   const deliveredCount  = orders.filter(o => o.status === 'Delivered').length;
   const revenue         = orders.reduce((s, o) => s + (o.grand_total || 0), 0);
 
-  /* nav handler: close drawer on mobile */
+  /* nav handler */
   const goTab = (id) => { setActiveTab(id); if (isMobile) setDrawerOpen(false); };
 
   /* â”€â”€â”€ Sidebar content (shared) â”€â”€â”€ */
   const SidebarContent = () => (
     <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
-      <div style={{ padding:'20px 16px', borderBottom:'1px solid rgba(255,255,255,0.07)', display:'flex', alignItems:'center', gap:'12px' }}>
-        <div style={{ width:'40px', height:'40px', borderRadius:'12px', background:'linear-gradient(135deg,#6d28d9,#5b21b6)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', flexShrink:0, boxShadow:'0 4px 14px rgba(109,40,217,0.4)' }}>ðŸ›’</div>
+      <div style={{ padding:'20px 24px', display:'flex', alignItems:'center', gap:'12px' }}>
+        <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'#16A34A', display:'flex', alignItems:'center', justifyContent:'center', color:'white' }}>
+          <ShoppingBag size={18} />
+        </div>
         <div>
-          <div style={{ fontSize:'0.9rem', fontWeight:800, color:'#f1f5f9', lineHeight:1.2 }}>Admin</div>
-          <div style={{ fontSize:'0.68rem', color:'#6d28d9', fontWeight:600 }}>Malerkotla Fresh</div>
+          <div style={{ fontSize:'1rem', fontWeight:700, color:'#F9FAFB', lineHeight:1.1 }}>Malerkotla Admin</div>
         </div>
         {isMobile && (
-          <button onClick={() => setDrawerOpen(false)} style={{ marginLeft:'auto', background:'none', border:'none', cursor:'pointer', color:'#475569', display:'flex' }}>
+          <button onClick={() => setDrawerOpen(false)} style={{ marginLeft:'auto', background:'none', border:'none', cursor:'pointer', color:'#9CA3AF' }}>
             <X size={20} />
           </button>
         )}
       </div>
-      <nav style={{ flex:1, padding:'12px 8px', overflowY:'auto' }}>
+      
+      <div style={{ padding:'0 16px', fontSize:'0.75rem', fontWeight:600, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'8px' }}>
+        Menu
+      </div>
+
+      <nav style={{ flex:1, padding:'0 12px', overflowY:'auto' }}>
         {NAV.map(n => {
           const active = activeTab === n.id;
           return (
             <button key={n.id} onClick={() => goTab(n.id)} style={{
               display:'flex', alignItems:'center', gap:'12px',
-              width:'calc(100% - 0px)', padding:'11px 14px', margin:'2px 0',
-              borderRadius:'10px', border:'none', cursor:'pointer',
-              background: active ? 'linear-gradient(135deg,rgba(109,40,217,0.18),rgba(22,163,74,0.1))' : 'transparent',
-              color: active ? '#6d28d9' : '#64748b',
-              fontWeight: active ? 700 : 500,
+              width:'100%', padding:'10px 12px', margin:'4px 0',
+              borderRadius:'8px', border:'none', cursor:'pointer',
+              background: active ? '#1F2937' : 'transparent',
+              color: active ? '#10B981' : '#D1D5DB', // green accent
+              fontWeight: active ? 600 : 500,
               fontSize:'0.875rem', fontFamily:'inherit',
-              textAlign:'left', transition:'all 0.18s',
-              borderLeft: active ? '2px solid #6d28d9' : '2px solid transparent',
+              textAlign:'left', transition:'all 0.2s',
             }}>
-              <n.icon size={18} style={{ flexShrink:0 }} />
+              <n.icon size={18} style={{ flexShrink:0, color: active ? '#10B981' : '#9CA3AF' }} />
               {n.label}
-              {active && <ChevronRight size={14} style={{ marginLeft:'auto' }} />}
             </button>
           );
         })}
       </nav>
-      <div style={{ padding:'12px 8px', borderTop:'1px solid rgba(255,255,255,0.07)' }}>
-        <button style={{ display:'flex', alignItems:'center', gap:'12px', width:'100%', padding:'11px 14px', borderRadius:'10px', border:'none', cursor:'pointer', background:'transparent', color:'#ef4444', fontWeight:600, fontSize:'0.875rem', fontFamily:'inherit' }}>
-          <LogOut size={18} style={{ flexShrink:0 }} /> Sign Out
+      <div style={{ padding:'16px 12px' }}>
+        <button style={{ display:'flex', alignItems:'center', gap:'12px', width:'100%', padding:'10px 12px', borderRadius:'8px', border:'none', cursor:'pointer', background:'transparent', color:'#D1D5DB', fontWeight:500, fontSize:'0.875rem', fontFamily:'inherit', transition:'background 0.2s' }}
+          onMouseEnter={e=>e.currentTarget.style.background='#1F2937'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+          <LogOut size={18} style={{ flexShrink:0, color:'#9CA3AF' }} /> Logout
         </button>
       </div>
     </div>
@@ -240,23 +248,28 @@ export default function Admin() {
   /* â”€â”€â”€ Action button for orders â”€â”€â”€ */
   const OrderAction = ({ order }) => {
     if (order.status === 'Pending')
-      return <button onClick={() => updateOrderStatus(order.id,'Accepted')} className="adm-action-btn" style={{ background:'linear-gradient(135deg,#6d28d9,#5b21b6)' }}>Accept</button>;
+      return (
+        <div style={{display:'flex', gap:'8px'}}>
+          <button onClick={() => updateOrderStatus(order.id,'Accepted')} className="adm-action-btn" style={{ background:'#10B981', color:'white' }}>Accept</button>
+          <button onClick={() => updateOrderStatus(order.id,'Cancelled')} className="adm-action-btn" style={{ background:'#FEE2E2', color:'#DC2626' }}>Cancel</button>
+        </div>
+      );
     if (order.status === 'Accepted')
-      return <button onClick={() => updateOrderStatus(order.id,'Preparing')} className="adm-action-btn" style={{ background:'linear-gradient(135deg,#3b82f6,#2563eb)' }}>Prepare</button>;
-    if (order.status === 'Preparing')
-      return <button onClick={() => updateOrderStatus(order.id,'Ready for Delivery')} className="adm-action-btn" style={{ background:'linear-gradient(135deg,#8b5cf6,#7c3aed)' }}>Mark Ready</button>;
+      return <button onClick={() => updateOrderStatus(order.id,'Ready for Delivery')} className="adm-action-btn" style={{ background:'#3B82F6', color:'white' }}>Ready</button>;
     if (order.status === 'Ready for Delivery' && !order.delivery_boy_id)
       return (
         <select onChange={e => { if(e.target.value) assignDeliveryBoy(order.id, e.target.value); }}
-          style={{ padding:'6px 10px', borderRadius:'8px', background:'#1e293b', border:'1px solid rgba(255,255,255,0.1)', color:'#cbd5e1', fontSize:'0.75rem', cursor:'pointer', width:'100%' }}>
+          style={{ padding:'6px 8px', borderRadius:'6px', border:'1px solid #D1D5DB', background:'#F9FAFB', fontSize:'0.8rem', cursor:'pointer' }}>
           <option value="">Assign Riderâ€¦</option>
           {deliveryBoys.map(db => <option key={db.id} value={db.id}>{db.name}</option>)}
         </select>
       );
     if (order.delivery_boy_id && order.status !== 'Delivered')
-      return <span style={{ fontSize:'0.72rem', color:'#475569', display:'flex', alignItems:'center', gap:'4px' }}><Truck size={12}/> En routeâ€¦</span>;
+      return <span style={{ fontSize:'0.8rem', color:'#4B5563', display:'flex', alignItems:'center', gap:'6px', fontWeight:500 }}><Truck size={14}/> En route</span>;
     if (order.status === 'Delivered')
-      return <span style={{ fontSize:'0.72rem', color:'#c084fc', display:'flex', alignItems:'center', gap:'4px' }}><CheckCircle2 size={12}/> Done</span>;
+      return <span style={{ fontSize:'0.8rem', color:'#059669', display:'flex', alignItems:'center', gap:'6px', fontWeight:500 }}><CheckCircle2 size={14}/> Completed</span>;
+    if (order.status === 'Cancelled')
+      return <span style={{ fontSize:'0.8rem', color:'#DC2626', fontWeight:500 }}>Cancelled</span>;
     return null;
   };
 
@@ -264,11 +277,11 @@ export default function Admin() {
   const Modal = ({ open, onClose, title, children }) => {
     if (!open) return null;
     return (
-      <div onClick={e => e.target === e.currentTarget && onClose()} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.72)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:400, padding:'16px' }}>
-        <div style={{ background:'linear-gradient(145deg,#1e293b,#0f172a)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'20px', width:'100%', maxWidth:'480px', maxHeight:'92vh', overflowY:'auto', padding:'24px', boxShadow:'0 25px 80px rgba(0,0,0,0.5)' }}>
+      <div onClick={e => e.target === e.currentTarget && onClose()} style={{ position:'fixed', inset:0, background:'rgba(17, 24, 39, 0.6)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:400, padding:'16px' }}>
+        <div style={{ background:'#ffffff', borderRadius:'12px', width:'100%', maxWidth:'500px', maxHeight:'90vh', overflowY:'auto', padding:'24px', boxShadow:'0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' }}>
-            <h2 style={{ fontWeight:800, fontSize:'1.05rem', color:'#f1f5f9' }}>{title}</h2>
-            <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'#475569', display:'flex' }}><X size={22}/></button>
+            <h2 style={{ fontWeight:700, fontSize:'1.1rem', color:'#111827' }}>{title}</h2>
+            <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'#6B7280', display:'flex' }}><X size={20}/></button>
           </div>
           {children}
         </div>
@@ -277,12 +290,12 @@ export default function Admin() {
   };
 
   const SaveBtn = ({ loading, label, editLabel }) => (
-    <button type="submit" disabled={loading} style={{ flex:1, padding:'12px', background:'linear-gradient(135deg,#6d28d9,#5b21b6)', color:'white', border:'none', borderRadius:'10px', fontWeight:700, fontSize:'0.875rem', cursor:'pointer', fontFamily:'inherit', boxShadow:'0 4px 16px rgba(109,40,217,0.3)' }}>
-      {loading ? 'Savingâ€¦' : (editLabel || label)}
+    <button type="submit" disabled={loading} style={{ flex:1, padding:'10px', background:'#16A34A', color:'white', border:'none', borderRadius:'8px', fontWeight:600, fontSize:'0.875rem', cursor:loading?'not-allowed':'pointer', transition:'background 0.2s', fontFamily:'inherit' }}>
+      {loading ? 'Saving...' : (editLabel || label)}
     </button>
   );
   const CancelBtn = ({ onClick }) => (
-    <button type="button" onClick={onClick} style={{ flex:1, padding:'12px', background:'rgba(30,41,59,0.8)', color:'#94a3b8', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'10px', fontWeight:600, fontSize:'0.875rem', cursor:'pointer', fontFamily:'inherit' }}>
+    <button type="button" onClick={onClick} style={{ flex:1, padding:'10px', background:'#F3F4F6', color:'#374151', border:'1px solid #D1D5DB', borderRadius:'8px', fontWeight:600, fontSize:'0.875rem', cursor:'pointer', fontFamily:'inherit' }}>
       Cancel
     </button>
   );
@@ -291,212 +304,185 @@ export default function Admin() {
     <div className="adm-root">
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
         .adm-root {
-          display: flex; min-height: 100vh;
-          background: #0f172a;
+          display: flex; min-height: 100vh; width: 100%;
+          background: #F9FAFB;
           font-family: 'Inter', system-ui, sans-serif;
         }
-        /* sidebar desktop */
         .adm-sidebar {
-          width: 220px; flex-shrink: 0;
-          background: linear-gradient(180deg,#1e293b 0%,#0f172a 100%);
-          border-right: 1px solid rgba(255,255,255,0.06);
+          width: 240px; flex-shrink: 0;
+          background: #111827;
+          border-right: 1px solid #1F2937;
           height: 100vh; position: sticky; top: 0;
           overflow: hidden;
         }
-        /* drawer overlay on mobile */
         .adm-drawer-overlay {
-          display: none;
-          position: fixed; inset: 0;
-          background: rgba(0,0,0,0.6);
-          z-index: 200;
+          display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200;
         }
         .adm-drawer {
-          position: fixed; top: 0; left: 0;
-          width: 240px; height: 100vh;
-          background: linear-gradient(180deg,#1e293b,#0f172a);
-          border-right: 1px solid rgba(255,255,255,0.08);
-          z-index: 201; overflow: hidden;
-          transform: translateX(-100%);
-          transition: transform 0.28s cubic-bezier(.4,0,.2,1);
+          position: fixed; top: 0; left: 0; width: 250px; height: 100vh;
+          background: #111827; z-index: 201; transform: translateX(-100%);
+          transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .adm-drawer.open { transform: translateX(0); }
         .adm-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
         .adm-topbar {
-          display: flex; align-items: center; gap: 12px;
-          padding: 14px 20px;
-          background: rgba(15,23,42,0.85);
-          backdrop-filter: blur(12px);
-          border-bottom: 1px solid rgba(255,255,255,0.06);
+          display: flex; align-items: center; justify-content: space-between;
+          height: 60px; padding: 0 24px;
+          background: #ffffff;
+          border-bottom: 1px solid #E5E7EB;
           position: sticky; top: 0; z-index: 50;
         }
-        .adm-hamburger { display: none; }
-        .adm-search-wrap {
+        .adm-search {
           display: flex; align-items: center; gap: 8px;
-          background: rgba(30,41,59,0.8);
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 10px; padding: 8px 14px;
-          flex: 1; max-width: 360px;
+          background: #F3F4F6;
+          border-radius: 8px; padding: 8px 12px; width: 300px;
         }
-        .adm-search-input {
-          background: none; border: none; outline: none;
-          color: #e2e8f0; font-size: 0.875rem; width: 100%; font-family: inherit;
+        .adm-search input {
+          background: none; border: none; outline: none; width: 100%;
+          font-size: 0.875rem; color: #111827;
         }
-        .adm-content { flex: 1; padding: 24px; overflow-y: auto; }
-        .adm-page-title { font-size: 1.4rem; font-weight: 800; color: #f1f5f9; margin-bottom: 4px; letter-spacing: -0.02em; }
-        .adm-page-sub { font-size: 0.82rem; color: #64748b; margin-bottom: 24px; }
-        .adm-card {
-          background: rgba(30,41,59,0.6);
-          border: 1px solid rgba(255,255,255,0.06);
-          border-radius: 16px;
-          backdrop-filter: blur(8px);
+        .adm-content { flex: 1; padding: 24px; overflow-y: auto; color: #111827; }
+        .adm-page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+        .adm-title { font-size: 1.5rem; font-weight: 700; color: #111827; letter-spacing: -0.02em; }
+        
+        .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px; }
+        .stat-card {
+          background: #ffffff; border-radius: 12px; padding: 20px;
+          border: 1px solid #E5E7EB; box-shadow: 0 1px 2px rgba(0,0,0,0.02);
         }
-        /* stat grid */
-        .adm-stat-grid {
-          display: grid;
-          grid-template-columns: repeat(4,1fr);
-          gap: 14px; margin-bottom: 24px;
+        .chart-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 24px; }
+
+        .adm-table-wrap {
+          background: #ffffff; border-radius: 12px; border: 1px solid #E5E7EB;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.03); overflow: hidden;
         }
-        .adm-stat-card {
-          border-radius: 16px; padding: 20px 18px;
-          position: relative; overflow: hidden;
-        }
-        /* table */
-        .adm-table { width: 100%; border-collapse: collapse; }
-        .adm-th {
-          padding: 12px 16px;
-          font-size: 0.68rem; font-weight: 700; color: #475569;
-          text-transform: uppercase; letter-spacing: 0.06em;
-          text-align: left; border-bottom: 1px solid rgba(255,255,255,0.06);
-          background: rgba(15,23,42,0.4); white-space: nowrap;
-        }
-        .adm-td {
-          padding: 13px 16px;
-          font-size: 0.875rem; color: #cbd5e1;
-          border-bottom: 1px solid rgba(255,255,255,0.04);
-        }
-        .adm-tr:hover .adm-td { background: rgba(255,255,255,0.02); }
-        /* mobile order card */
-        .adm-order-card {
-          background: rgba(30,41,59,0.7);
-          border: 1px solid rgba(255,255,255,0.07);
-          border-radius: 14px;
-          padding: 14px;
-          display: flex; flex-direction: column; gap: 10px;
-        }
-        .adm-action-btn {
-          padding: 6px 14px; border-radius: 8px; border: none;
-          color: white; font-weight: 700; font-size: 0.78rem;
-          cursor: pointer; font-family: inherit;
-          white-space: nowrap;
-        }
-        /* responsive */
+        .adm-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .adm-th { padding: 14px 20px; font-size: 0.75rem; font-weight: 600; color: #6B7280; text-transform: uppercase; border-bottom: 1px solid #E5E7EB; background: #F9FAFB; }
+        .adm-td { padding: 14px 20px; font-size: 0.875rem; color: #374151; border-bottom: 1px solid #F3F4F6; }
+        .adm-tr:last-child .adm-td { border-bottom: none; }
+        .adm-tr:hover .adm-td { background: #F9FAFB; }
+
+        .adm-action-btn { padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; border: none; }
+
         @media (max-width: 1024px) {
-          .adm-stat-grid { grid-template-columns: repeat(2,1fr); }
+          .stat-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+          .chart-grid { grid-template-columns: 1fr; }
         }
-        @media (max-width: 767px) {
+        @media (max-width: 768px) {
           .adm-sidebar { display: none; }
           .adm-drawer-overlay.open { display: block; }
-          .adm-hamburger { display: flex; }
           .adm-content { padding: 16px; }
-          .adm-stat-grid { grid-template-columns: repeat(2,1fr); gap: 10px; margin-bottom: 16px; }
-          .adm-stat-card { padding: 14px; }
-          .adm-page-title { font-size: 1.15rem; }
-          .adm-table-wrap { display: none; }
-          .adm-mobile-list { display: flex !important; }
-          .adm-topbar { padding: 12px 14px; }
-        }
-        @media (min-width: 768px) {
-          .adm-mobile-list { display: none !important; }
+          .adm-topbar { padding: 0 16px; }
+          .stat-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+          .adm-search { display: none; } /* Hide search topbar on mobile for clean UI */
         }
       `}</style>
 
-      {/* â”€â”€ Desktop Sidebar â”€â”€ */}
+      {/* Desktop Sidebar */}
       <aside className="adm-sidebar">
         <SidebarContent />
       </aside>
 
-      {/* â”€â”€ Mobile Drawer â”€â”€ */}
+      {/* Mobile Drawer */}
       <div className={`adm-drawer-overlay ${drawerOpen ? 'open' : ''}`} onClick={() => setDrawerOpen(false)} />
       <div className={`adm-drawer ${drawerOpen ? 'open' : ''}`}>
         <SidebarContent />
       </div>
 
-      {/* â”€â”€ Main â”€â”€ */}
       <div className="adm-main">
-
-        {/* Topbar */}
-        <div className="adm-topbar">
-          <button className="adm-hamburger" onClick={() => setDrawerOpen(v=>!v)}
-            style={{ background:'rgba(30,41,59,0.8)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'8px', padding:'7px', cursor:'pointer', color:'#94a3b8', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-            <Menu size={20} />
-          </button>
-
-          <div className="adm-search-wrap">
-            <Search size={15} color="#475569" />
-            <input className="adm-search-input" placeholder="Searchâ€¦" value={searchQ} onChange={e => setSearchQ(e.target.value)} />
+        {/* Top Header */}
+        <header className="adm-topbar">
+          <div style={{ display:'flex', alignItems:'center', gap:'16px' }}>
+            {isMobile && (
+              <button onClick={() => setDrawerOpen(true)} style={{ background:'none', border:'none', cursor:'pointer' }}>
+                <Menu size={24} color="#374151" />
+              </button>
+            )}
+            {!isMobile && <div className="adm-title" style={{ fontSize:'1.1rem' }}>{NAV.find(n=>n.id===activeTab)?.label || 'Admin'}</div>}
           </div>
 
-          <div style={{ display:'flex', alignItems:'center', gap:'8px', marginLeft:'auto' }}>
-            <div style={{ width:'36px', height:'36px', borderRadius:'10px', background:'linear-gradient(135deg,#6d28d9,#5b21b6)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.7rem', fontWeight:800, color:'white', flexShrink:0 }}>AD</div>
+          <div className="adm-search">
+            <Search size={16} color="#9CA3AF" />
+            <input placeholder="Search orders, products..." value={searchQ} onChange={e=>setSearchQ(e.target.value)} />
           </div>
-        </div>
 
-        {/* Content */}
+          <div style={{ display:'flex', alignItems:'center', gap:'16px' }}>
+            <button style={{ background:'none', border:'none', color:'#6B7280', cursor:'pointer', position:'relative' }}>
+              <Bell size={20} />
+              <div style={{ position:'absolute', top:'-2px', right:'-2px', width:'8px', height:'8px', background:'#EF4444', borderRadius:'50%' }} />
+            </button>
+            <div style={{ width:'36px', height:'36px', borderRadius:'50%', background:'#E5E7EB', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:600, color:'#374151', cursor:'pointer' }}>
+              A
+            </div>
+          </div>
+        </header>
+
         <div className="adm-content">
 
-          {/* Toast */}
+          {/* Toast Notification */}
           {toast && (
-            <div style={{ display:'flex', alignItems:'center', gap:'10px', padding:'12px 16px', borderRadius:'12px', marginBottom:'18px', background: toast.type==='success' ? 'rgba(109,40,217,0.12)' : 'rgba(239,68,68,0.12)', border:`1px solid ${toast.type==='success' ? 'rgba(109,40,217,0.3)' : 'rgba(239,68,68,0.3)'}`, color: toast.type==='success' ? '#c084fc' : '#f87171', fontWeight:600, fontSize:'0.875rem' }}>
-              {toast.type==='success' ? <CheckCircle2 size={16}/> : <AlertCircle size={16}/>} {toast.msg}
+            <div style={{ padding:'12px 16px', borderRadius:'8px', marginBottom:'20px', background: toast.type==='success' ? '#ECFDF5' : '#FEF2F2', border:`1px solid ${toast.type==='success' ? '#A7F3D0' : '#FECACA'}`, color: toast.type==='success' ? '#059669' : '#DC2626', fontWeight:500, fontSize:'0.875rem', display:'flex', alignItems:'center', gap:'8px' }}>
+              {toast.type==='success' ? <CheckCircle2 size={18}/> : <AlertCircle size={18}/>} {toast.msg}
             </div>
           )}
 
           {/* â”€â”€ DASHBOARD â”€â”€ */}
           {activeTab === 'dashboard' && (
             <div>
-              <div className="adm-page-title">Dashboard</div>
-              <div className="adm-page-sub">Malerkotla Fresh Â· Real-time overview</div>
-              <div className="adm-stat-grid">
+              <div className="adm-page-header">
+                <div className="adm-title">Dashboard Overview</div>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="stat-grid">
                 {[
-                  { label:'Total Orders', value:orders.length,     icon:ShoppingBag,  g:'linear-gradient(135deg,#6366f1,#4338ca)', glow:'rgba(99,102,241,0.3)' },
-                  { label:'Pending',      value:pendingCount,       icon:Clock,         g:'linear-gradient(135deg,#f59e0b,#d97706)', glow:'rgba(245,158,11,0.3)' },
-                  { label:'Delivered',    value:deliveredCount,     icon:CheckCircle2,  g:'linear-gradient(135deg,#6d28d9,#5b21b6)', glow:'rgba(109,40,217,0.3)' },
-                  { label:'Revenue',      value:`â‚¹${revenue}`,      icon:TrendingUp,    g:'linear-gradient(135deg,#ec4899,#db2777)', glow:'rgba(236,72,153,0.3)' },
-                ].map(s => (
-                  <div key={s.label} className="adm-stat-card" style={{ background:s.g, boxShadow:`0 6px 24px ${s.glow}` }}>
-                    <div style={{ position:'absolute', top:'-20px', right:'-20px', width:'80px', height:'80px', borderRadius:'50%', background:'rgba(255,255,255,0.08)' }} />
-                    <div style={{ width:'38px', height:'38px', borderRadius:'10px', background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'12px', flexShrink:0 }}>
-                      <s.icon size={18} color="white" />
+                  { title: 'Total Orders', value: orders.length, icon: ShoppingBag, color: '#3B82F6', bg: '#DBEAFE' },
+                  { title: 'Total Revenue', value: `â‚¹${revenue}`, icon: TrendingUp, color: '#10B981', bg: '#D1FAE5' },
+                  { title: 'Active Users', value: '142', icon: Users, color: '#8B5CF6', bg: '#EDE9FE' },
+                  { title: 'Pending Deliveries', value: pendingCount, icon: Clock, color: '#F59E0B', bg: '#FEF3C7' }
+                ].map(stat => (
+                  <div key={stat.title} className="stat-card">
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px' }}>
+                      <div style={{ fontSize:'0.875rem', fontWeight:600, color:'#6B7280' }}>{stat.title}</div>
+                      <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:stat.bg, color:stat.color, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                        <stat.icon size={16} />
+                      </div>
                     </div>
-                    <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.7)', marginBottom:'4px', fontWeight:600 }}>{s.label}</div>
-                    <div style={{ fontSize:'1.6rem', fontWeight:900, color:'white', lineHeight:1 }}>{s.value}</div>
+                    <div style={{ fontSize:'1.75rem', fontWeight:800, color:'#111827' }}>{stat.value}</div>
                   </div>
                 ))}
               </div>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))', gap:'14px' }}>
-                <div className="adm-card" style={{ padding:'18px' }}>
-                  <div style={{ fontWeight:700, color:'#f1f5f9', marginBottom:'14px', display:'flex', alignItems:'center', gap:'8px', fontSize:'0.9rem' }}>
-                    <Package size={15} color="#6d28d9"/> Inventory
+
+              {/* Charts area */}
+              <div className="chart-grid">
+                <div className="stat-card" style={{ minHeight:'300px' }}>
+                  <div style={{ fontSize:'1rem', fontWeight:700, color:'#111827', marginBottom:'20px' }}>Sales Chart</div>
+                  {/* Fake SVG Line Graph */}
+                  <div style={{ width:'100%', height:'220px', position:'relative', borderBottom:'1px solid #E5E7EB', borderLeft:'1px solid #E5E7EB' }}>
+                    <svg viewBox="0 0 500 200" preserveAspectRatio="none" style={{ width:'100%', height:'100%', overflow:'visible' }}>
+                      <defs>
+                        <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#10B981" stopOpacity="0.2"/>
+                          <stop offset="100%" stopColor="#10B981" stopOpacity="0"/>
+                        </linearGradient>
+                      </defs>
+                      <path d="M0,180 L50,150 L100,160 L150,100 L200,120 L250,60 L300,90 L350,40 L400,60 L450,20 L500,40 L500,200 L0,200 Z" fill="url(#lineGrad)" />
+                      <polyline points="0,180 50,150 100,160 150,100 200,120 250,60 300,90 350,40 400,60 450,20 500,40" fill="none" stroke="#10B981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
                   </div>
-                  {[['Products',products.length],['Categories',dbCategories.length],['Riders',deliveryBoys.length]].map(([l,v])=>(
-                    <div key={l} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
-                      <span style={{ color:'#64748b', fontSize:'0.85rem' }}>{l}</span>
-                      <span style={{ color:'#f1f5f9', fontWeight:700 }}>{v}</span>
-                    </div>
-                  ))}
                 </div>
-                <div className="adm-card" style={{ padding:'18px' }}>
-                  <div style={{ fontWeight:700, color:'#f1f5f9', marginBottom:'14px', display:'flex', alignItems:'center', gap:'8px', fontSize:'0.9rem' }}>
-                    <Star size={15} color="#f59e0b"/> Recent Orders
+
+                <div className="stat-card" style={{ minHeight:'300px' }}>
+                  <div style={{ fontSize:'1rem', fontWeight:700, color:'#111827', marginBottom:'20px' }}>Orders Overview</div>
+                  {/* Fake Bar Chart */}
+                  <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', height:'220px', gap:'8px' }}>
+                     {[40, 70, 45, 90, 60, 100, 80].map((h, i) => (
+                       <div key={i} style={{ width:'12%', height:`${h}%`, background: i===5 ? '#10B981' : '#E5E7EB', borderRadius:'4px 4px 0 0' }} />
+                     ))}
                   </div>
-                  {orders.slice(0,4).map(o => (
-                    <div key={o.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'7px 0', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
-                      <div style={{ fontSize:'0.82rem', color:'#cbd5e1', fontWeight:600 }}>{o.customer_details?.name}</div>
-                      <StatusBadge status={o.status} />
-                    </div>
-                  ))}
-                  {orders.length===0 && <div style={{ color:'#475569', fontSize:'0.82rem' }}>No orders yet.</div>}
                 </div>
               </div>
             </div>
@@ -505,69 +491,42 @@ export default function Admin() {
           {/* â”€â”€ ORDERS â”€â”€ */}
           {activeTab === 'orders' && (
             <div>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', flexWrap:'wrap', gap:'12px', marginBottom:'18px' }}>
-                <div>
-                  <div className="adm-page-title">Orders</div>
-                  <div className="adm-page-sub" style={{ margin:0 }}>{filteredOrders.length} total orders</div>
-                </div>
-                <button onClick={() => {}} style={{ display:'flex', alignItems:'center', gap:'6px', padding:'8px 14px', background:'rgba(30,41,59,0.8)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'10px', color:'#94a3b8', fontWeight:600, fontSize:'0.8rem', cursor:'pointer', fontFamily:'inherit' }}>
-                  <RefreshCw size={14}/> Refresh
-                </button>
+              <div className="adm-page-header">
+                <div className="adm-title">Orders Management</div>
               </div>
-
-              {/* Desktop table */}
-              <div className="adm-table-wrap adm-card" style={{ overflow:'hidden' }}>
+              <div className="adm-table-wrap">
                 <div style={{ overflowX:'auto' }}>
                   <table className="adm-table">
-                    <thead>
-                      <tr>
-                        {['Order ID','Customer','Items','Total','Status','Action'].map(h=>(
-                          <th key={h} className="adm-th">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredOrders.length===0 && <tr><td colSpan="6" className="adm-td" style={{ textAlign:'center', padding:'40px', color:'#475569' }}>No orders found.</td></tr>}
-                      {filteredOrders.map(order => (
-                        <tr key={order.id} className="adm-tr">
-                          <td className="adm-td"><span style={{ fontFamily:'monospace', color:'#6d28d9', fontWeight:700, fontSize:'0.8rem' }}>#{order.id.slice(0,8)}</span></td>
-                          <td className="adm-td">
-                            <div style={{ fontWeight:600, color:'#f1f5f9' }}>{order.customer_details?.name}</div>
-                            <div style={{ fontSize:'0.72rem', color:'#475569', marginTop:'2px' }}>{order.customer_details?.phone}</div>
-                          </td>
-                          <td className="adm-td"><div style={{ fontSize:'0.78rem', color:'#64748b', maxWidth:'160px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{order.order_items?.map(i=>`${i.quantity}Ã— ${i.product?.name}`).join(', ')}</div></td>
-                          <td className="adm-td"><span style={{ fontWeight:800, color:'#6d28d9' }}>â‚¹{order.grand_total}</span></td>
-                          <td className="adm-td"><StatusBadge status={order.status}/></td>
-                          <td className="adm-td" style={{ minWidth:'130px' }}><OrderAction order={order}/></td>
-                        </tr>
-                      ))}
-                    </tbody>
+                     <thead>
+                       <tr>
+                         <th className="adm-th">Order ID</th>
+                         <th className="adm-th">Customer Name</th>
+                         <th className="adm-th">Address</th>
+                         <th className="adm-th">Amount</th>
+                         <th className="adm-th">Status</th>
+                         <th className="adm-th">Action</th>
+                       </tr>
+                     </thead>
+                     <tbody>
+                       {filteredOrders.length===0 && <tr><td colSpan="6" className="adm-td" style={{textAlign:'center', padding:'32px', color:'#6B7280'}}>No orders found</td></tr>}
+                       {filteredOrders.map(o => (
+                         <tr className="adm-tr" key={o.id}>
+                           <td className="adm-td" style={{ fontWeight:600, color:'#111827' }}>#{o.id.slice(0,6).toUpperCase()}</td>
+                           <td className="adm-td">
+                             <div style={{ fontWeight:500, color:'#111827' }}>{o.customer_details?.name || 'Unknown'}</div>
+                             <div style={{ fontSize:'0.75rem', color:'#6B7280' }}>{o.customer_details?.phone}</div>
+                           </td>
+                           <td className="adm-td" style={{ maxWidth:'200px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                             {o.customer_details?.address || 'N/A'}
+                           </td>
+                           <td className="adm-td" style={{ fontWeight:600 }}>â‚¹{o.grand_total}</td>
+                           <td className="adm-td"><StatusBadge status={o.status} /></td>
+                           <td className="adm-td"><OrderAction order={o} /></td>
+                         </tr>
+                       ))}
+                     </tbody>
                   </table>
                 </div>
-              </div>
-
-              {/* Mobile cards */}
-              <div className="adm-mobile-list" style={{ flexDirection:'column', gap:'10px' }}>
-                {filteredOrders.length===0 && <div style={{ textAlign:'center', padding:'40px', color:'#475569' }}>No orders found.</div>}
-                {filteredOrders.map(order => (
-                  <div key={order.id} className="adm-order-card">
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-                      <span style={{ fontFamily:'monospace', color:'#6d28d9', fontWeight:700, fontSize:'0.82rem' }}>#{order.id.slice(0,8)}</span>
-                      <StatusBadge status={order.status}/>
-                    </div>
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                      <div>
-                        <div style={{ fontWeight:700, color:'#f1f5f9', fontSize:'0.875rem' }}>{order.customer_details?.name}</div>
-                        <div style={{ fontSize:'0.72rem', color:'#475569' }}>{order.customer_details?.phone}</div>
-                      </div>
-                      <div style={{ fontWeight:900, color:'#6d28d9', fontSize:'1rem' }}>â‚¹{order.grand_total}</div>
-                    </div>
-                    <div style={{ fontSize:'0.75rem', color:'#64748b', lineHeight:1.5 }}>
-                      {order.order_items?.map(i=>`${i.quantity}Ã— ${i.product?.name}`).join(' Â· ')}
-                    </div>
-                    <OrderAction order={order}/>
-                  </div>
-                ))}
               </div>
             </div>
           )}
@@ -575,69 +534,49 @@ export default function Admin() {
           {/* â”€â”€ PRODUCTS â”€â”€ */}
           {activeTab === 'products' && (
             <div>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', flexWrap:'wrap', gap:'12px', marginBottom:'18px' }}>
-                <div>
-                  <div className="adm-page-title">Products</div>
-                  <div className="adm-page-sub" style={{ margin:0 }}>{filteredProducts.length} items</div>
-                </div>
-                <button onClick={openAddProduct} style={{ display:'flex', alignItems:'center', gap:'6px', padding:'10px 16px', background:'linear-gradient(135deg,#6d28d9,#5b21b6)', color:'white', border:'none', borderRadius:'10px', fontWeight:700, fontSize:'0.875rem', cursor:'pointer', fontFamily:'inherit', boxShadow:'0 4px 16px rgba(109,40,217,0.35)', whiteSpace:'nowrap' }}>
+              <div className="adm-page-header">
+                <div className="adm-title">Product Catalog</div>
+                <button onClick={openAddProduct} style={{ padding:'10px 16px', background:'#111827', color:'white', border:'none', borderRadius:'8px', fontWeight:600, display:'flex', alignItems:'center', gap:'8px', cursor:'pointer' }}>
                   <Plus size={16}/> Add Product
                 </button>
               </div>
-
-              {/* Desktop table */}
-              <div className="adm-table-wrap adm-card" style={{ overflow:'hidden' }}>
+              <div className="adm-table-wrap">
                 <div style={{ overflowX:'auto' }}>
                   <table className="adm-table">
-                    <thead>
-                      <tr>{['','Name','Category','Stock','Price','Actions'].map(h=><th key={h} className="adm-th">{h}</th>)}</tr>
-                    </thead>
-                    <tbody>
-                      {filteredProducts.length===0 && <tr><td colSpan="6" className="adm-td" style={{ textAlign:'center', padding:'40px', color:'#475569' }}>No products yet.</td></tr>}
-                      {filteredProducts.map(p=>(
-                        <tr key={p.id} className="adm-tr">
-                          <td className="adm-td" style={{ width:'56px' }}>
-                            <img src={p.image_url} alt={p.name} onError={e=>e.target.src='https://placehold.co/44?text=ðŸ“¦'} style={{ width:'44px', height:'44px', objectFit:'contain', borderRadius:'10px', border:'1px solid rgba(255,255,255,0.08)', background:'#1e293b' }}/>
-                          </td>
-                          <td className="adm-td" style={{ fontWeight:600, color:'#f1f5f9' }}>{p.name}</td>
-                          <td className="adm-td"><span style={{ padding:'3px 10px', borderRadius:'20px', background:'rgba(109,40,217,0.1)', color:'#c084fc', fontSize:'0.72rem', fontWeight:600 }}>{p.category}</span></td>
-                          <td className="adm-td"><span style={{ color:p.stock<10?'#f87171':'#cbd5e1', fontWeight:600 }}>{p.stock}</span></td>
-                          <td className="adm-td" style={{ fontWeight:800, color:'#6d28d9' }}>â‚¹{p.price}</td>
-                          <td className="adm-td">
-                            <div style={{ display:'flex', gap:'6px' }}>
-                              <IconBtn color="blue" onClick={()=>openEditProduct(p)}><Edit size={14}/></IconBtn>
-                              <IconBtn color="red" onClick={()=>deleteProduct(p.id)}><Trash2 size={14}/></IconBtn>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
+                     <thead>
+                       <tr>
+                         <th className="adm-th" style={{ width:'60px' }}>Image</th>
+                         <th className="adm-th">Product Name</th>
+                         <th className="adm-th">Category</th>
+                         <th className="adm-th">Price</th>
+                         <th className="adm-th">Stock</th>
+                         <th className="adm-th">Actions</th>
+                       </tr>
+                     </thead>
+                     <tbody>
+                       {filteredProducts.length===0 && <tr><td colSpan="6" className="adm-td" style={{textAlign:'center', padding:'32px', color:'#6B7280'}}>No products</td></tr>}
+                       {filteredProducts.map(p => (
+                         <tr className="adm-tr" key={p.id}>
+                           <td className="adm-td">
+                             <img src={p.image_url} alt="" style={{ width:'40px', height:'40px', borderRadius:'6px', objectFit:'cover', border:'1px solid #E5E7EB' }} />
+                           </td>
+                           <td className="adm-td" style={{ fontWeight:500, color:'#111827' }}>{p.name}</td>
+                           <td className="adm-td">
+                             <span style={{ background:'#F3F4F6', color:'#4B5563', padding:'4px 8px', borderRadius:'6px', fontSize:'0.75rem', fontWeight:500 }}>{p.category}</span>
+                           </td>
+                           <td className="adm-td" style={{ fontWeight:600 }}>â‚¹{p.price}</td>
+                           <td className="adm-td" style={{ color: p.stock < 10 ? '#DC2626' : '#059669', fontWeight:600 }}>{p.stock}</td>
+                           <td className="adm-td">
+                             <div style={{ display:'flex', gap:'8px' }}>
+                               <IconBtn color="blue" onClick={()=>openEditProduct(p)}><Edit size={14}/></IconBtn>
+                               <IconBtn color="red" onClick={()=>deleteProduct(p.id)}><Trash2 size={14}/></IconBtn>
+                             </div>
+                           </td>
+                         </tr>
+                       ))}
+                     </tbody>
                   </table>
                 </div>
-              </div>
-
-              {/* Mobile cards */}
-              <div className="adm-mobile-list" style={{ flexDirection:'column', gap:'10px' }}>
-                {filteredProducts.length===0 && <div style={{ textAlign:'center', padding:'40px', color:'#475569' }}>No products yet.</div>}
-                {filteredProducts.map(p=>(
-                  <div key={p.id} className="adm-card" style={{ padding:'12px 14px', display:'flex', alignItems:'center', gap:'12px' }}>
-                    <img src={p.image_url} alt={p.name} onError={e=>e.target.src='https://placehold.co/48?text=ðŸ“¦'} style={{ width:'52px', height:'52px', objectFit:'contain', borderRadius:'10px', border:'1px solid rgba(255,255,255,0.08)', background:'#1e293b', flexShrink:0 }}/>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontWeight:700, color:'#f1f5f9', fontSize:'0.875rem', marginBottom:'3px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</div>
-                      <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap' }}>
-                        <span style={{ padding:'2px 8px', borderRadius:'20px', background:'rgba(109,40,217,0.1)', color:'#c084fc', fontSize:'0.68rem', fontWeight:600 }}>{p.category}</span>
-                        <span style={{ fontSize:'0.72rem', color: p.stock<10?'#f87171':'#64748b' }}>Stock: {p.stock}</span>
-                      </div>
-                    </div>
-                    <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'8px' }}>
-                      <span style={{ fontWeight:800, color:'#6d28d9', fontSize:'0.95rem' }}>â‚¹{p.price}</span>
-                      <div style={{ display:'flex', gap:'6px' }}>
-                        <IconBtn color="blue" onClick={()=>openEditProduct(p)}><Edit size={13}/></IconBtn>
-                        <IconBtn color="red" onClick={()=>deleteProduct(p.id)}><Trash2 size={13}/></IconBtn>
-                      </div>
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
           )}
@@ -645,164 +584,149 @@ export default function Admin() {
           {/* â”€â”€ CATEGORIES â”€â”€ */}
           {activeTab === 'categories' && (
             <div>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', flexWrap:'wrap', gap:'12px', marginBottom:'18px' }}>
-                <div>
-                  <div className="adm-page-title">Categories</div>
-                  <div className="adm-page-sub" style={{ margin:0 }}>{dbCategories.length} categories</div>
-                </div>
-                <button onClick={openAddCat} style={{ display:'flex', alignItems:'center', gap:'6px', padding:'10px 16px', background:'linear-gradient(135deg,#6d28d9,#5b21b6)', color:'white', border:'none', borderRadius:'10px', fontWeight:700, fontSize:'0.875rem', cursor:'pointer', fontFamily:'inherit', boxShadow:'0 4px 16px rgba(109,40,217,0.35)', whiteSpace:'nowrap' }}>
+              <div className="adm-page-header">
+                <div className="adm-title">Categories</div>
+                <button onClick={openAddCat} style={{ padding:'10px 16px', background:'#111827', color:'white', border:'none', borderRadius:'8px', fontWeight:600, display:'flex', alignItems:'center', gap:'8px', cursor:'pointer' }}>
                   <Plus size={16}/> Add Category
                 </button>
               </div>
-              {dbCategories.length===0 ? (
-                <div className="adm-card" style={{ padding:'56px', textAlign:'center' }}>
-                  <div style={{ fontSize:'44px', marginBottom:'12px' }}>ðŸ·ï¸</div>
-                  <div style={{ color:'#94a3b8', fontWeight:600 }}>No categories yet</div>
-                </div>
-              ) : (
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))', gap:'14px' }}>
-                  {dbCategories.map(cat=>(
-                    <div key={cat.id} className="adm-card" style={{ overflow:'hidden', transition:'all 0.2s', cursor:'pointer' }}
-                      onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-3px)'; e.currentTarget.style.borderColor='rgba(109,40,217,0.3)';}}
-                      onMouseLeave={e=>{e.currentTarget.style.transform='none'; e.currentTarget.style.borderColor='rgba(255,255,255,0.06)';}}>
-                      <div style={{ height:'100px', background:'rgba(15,23,42,0.5)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                        <img src={cat.image_url} alt={cat.name} onError={e=>e.target.src='https://placehold.co/70?text=ðŸ·ï¸'} style={{ width:'68px', height:'68px', objectFit:'cover', borderRadius:'12px' }}/>
-                      </div>
-                      <div style={{ padding:'10px 12px' }}>
-                        <p style={{ fontWeight:700, color:'#f1f5f9', fontSize:'0.875rem', marginBottom:'8px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{cat.name}</p>
-                        <div style={{ display:'flex', gap:'6px' }}>
-                          <IconBtn color="blue" onClick={()=>openEditCat(cat)}><Edit size={13}/></IconBtn>
-                          <IconBtn color="red" onClick={()=>deleteCategory(cat.id)}><Trash2 size={13}/></IconBtn>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="adm-table-wrap">
+                <table className="adm-table">
+                   <thead>
+                     <tr>
+                       <th className="adm-th" style={{ width:'60px' }}>Image</th>
+                       <th className="adm-th">Name</th>
+                       <th className="adm-th">Items Count</th>
+                       <th className="adm-th">Actions</th>
+                     </tr>
+                   </thead>
+                   <tbody>
+                     {dbCategories.length===0 && <tr><td colSpan="4" className="adm-td" style={{textAlign:'center', padding:'32px'}}>No categories</td></tr>}
+                     {dbCategories.map(c => (
+                       <tr className="adm-tr" key={c.id}>
+                         <td className="adm-td"><img src={c.image_url} alt="" style={{ width:'40px', height:'40px', borderRadius:'6px', border:'1px solid #E5E7EB', objectFit:'cover' }} /></td>
+                         <td className="adm-td" style={{ fontWeight:500 }}>{c.name}</td>
+                         <td className="adm-td">{products.filter(p=>p.category===c.name).length}</td>
+                         <td className="adm-td">
+                           <div style={{ display:'flex', gap:'8px' }}>
+                             <IconBtn color="blue" onClick={()=>openEditCat(c)}><Edit size={14}/></IconBtn>
+                             <IconBtn color="red" onClick={()=>deleteCategory(c.id)}><Trash2 size={14}/></IconBtn>
+                           </div>
+                         </td>
+                       </tr>
+                     ))}
+                   </tbody>
+                </table>
+              </div>
             </div>
           )}
 
           {/* â”€â”€ DELIVERY BOYS â”€â”€ */}
           {activeTab === 'delivery' && (
             <div>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', flexWrap:'wrap', gap:'12px', marginBottom:'18px' }}>
-                <div>
-                  <div className="adm-page-title">Delivery Partners</div>
-                  <div className="adm-page-sub" style={{ margin:0 }}>{deliveryBoys.length} riders</div>
-                </div>
-                <button onClick={openAddDriver} style={{ display:'flex', alignItems:'center', gap:'6px', padding:'10px 16px', background:'linear-gradient(135deg,#6d28d9,#5b21b6)', color:'white', border:'none', borderRadius:'10px', fontWeight:700, fontSize:'0.875rem', cursor:'pointer', fontFamily:'inherit', boxShadow:'0 4px 16px rgba(109,40,217,0.35)', whiteSpace:'nowrap' }}>
+              <div className="adm-page-header">
+                <div className="adm-title">Delivery Boys</div>
+                <button onClick={openAddDriver} style={{ padding:'10px 16px', background:'#111827', color:'white', border:'none', borderRadius:'8px', fontWeight:600, display:'flex', alignItems:'center', gap:'8px', cursor:'pointer' }}>
                   <Plus size={16}/> Add Driver
                 </button>
               </div>
-
-              {/* Desktop table */}
-              <div className="adm-table-wrap adm-card" style={{ overflow:'hidden' }}>
-                <div style={{ overflowX:'auto' }}>
-                  <table className="adm-table">
-                    <thead>
-                      <tr>{['Name','Username','Phone','Password','Actions'].map(h=><th key={h} className="adm-th">{h}</th>)}</tr>
-                    </thead>
-                    <tbody>
-                      {deliveryBoys.length===0 && <tr><td colSpan="5" className="adm-td" style={{ textAlign:'center', padding:'40px', color:'#475569' }}>No drivers yet.</td></tr>}
-                      {deliveryBoys.map(db=>(
-                        <tr key={db.id} className="adm-tr">
-                          <td className="adm-td">
-                            <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-                              <div style={{ width:'34px', height:'34px', borderRadius:'50%', background:'linear-gradient(135deg,#6d28d9,#5b21b6)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, color:'white', fontSize:'0.75rem', flexShrink:0 }}>{db.name?.[0]?.toUpperCase()}</div>
-                              <span style={{ fontWeight:600, color:'#f1f5f9' }}>{db.name}</span>
-                            </div>
-                          </td>
-                          <td className="adm-td" style={{ fontFamily:'monospace', color:'#6d28d9' }}>@{db.username}</td>
-                          <td className="adm-td">{db.phone}</td>
-                          <td className="adm-td" style={{ fontFamily:'monospace', color:'#475569' }}>{db.password}</td>
-                          <td className="adm-td">
-                            <div style={{ display:'flex', gap:'6px' }}>
-                              <IconBtn color="blue" onClick={()=>openEditDriver(db)}><Edit size={14}/></IconBtn>
-                              <IconBtn color="red" onClick={()=>deleteDeliveryBoy(db.id)}><Trash2 size={14}/></IconBtn>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Mobile cards */}
-              <div className="adm-mobile-list" style={{ flexDirection:'column', gap:'10px' }}>
-                {deliveryBoys.length===0 && <div style={{ textAlign:'center', padding:'40px', color:'#475569' }}>No drivers yet.</div>}
-                {deliveryBoys.map(db=>(
-                  <div key={db.id} className="adm-card" style={{ padding:'14px 16px', display:'flex', alignItems:'center', gap:'12px' }}>
-                    <div style={{ width:'44px', height:'44px', borderRadius:'50%', background:'linear-gradient(135deg,#6d28d9,#5b21b6)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, color:'white', fontSize:'0.95rem', flexShrink:0 }}>{db.name?.[0]?.toUpperCase()}</div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontWeight:700, color:'#f1f5f9', fontSize:'0.875rem' }}>{db.name}</div>
-                      <div style={{ fontSize:'0.72rem', color:'#6d28d9', fontFamily:'monospace' }}>@{db.username}</div>
-                      <div style={{ fontSize:'0.72rem', color:'#64748b', marginTop:'2px' }}>{db.phone}</div>
-                    </div>
-                    <div style={{ display:'flex', gap:'6px' }}>
-                      <IconBtn color="blue" onClick={()=>openEditDriver(db)}><Edit size={13}/></IconBtn>
-                      <IconBtn color="red" onClick={()=>deleteDeliveryBoy(db.id)}><Trash2 size={13}/></IconBtn>
-                    </div>
-                  </div>
-                ))}
+              <div className="adm-table-wrap">
+                <table className="adm-table">
+                   <thead>
+                     <tr>
+                       <th className="adm-th">Name</th>
+                       <th className="adm-th">Phone</th>
+                       <th className="adm-th">Username</th>
+                       <th className="adm-th">Actions</th>
+                     </tr>
+                   </thead>
+                   <tbody>
+                     {deliveryBoys.map(d => (
+                       <tr className="adm-tr" key={d.id}>
+                         <td className="adm-td" style={{ fontWeight:500 }}>
+                           <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+                             <div style={{ width:'32px', height:'32px', borderRadius:'50%', background:'#E0E7FF', color:'#4F46E5', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700 }}>{d.name.charAt(0)}</div>
+                             {d.name}
+                           </div>
+                         </td>
+                         <td className="adm-td">{d.phone}</td>
+                         <td className="adm-td"><span style={{ color:'#6B7280' }}>@{d.username}</span></td>
+                         <td className="adm-td">
+                           <div style={{ display:'flex', gap:'8px' }}>
+                             <IconBtn color="blue" onClick={()=>openEditDriver(d)}><Edit size={14}/></IconBtn>
+                             <IconBtn color="red" onClick={()=>deleteDeliveryBoy(d.id)}><Trash2 size={14}/></IconBtn>
+                           </div>
+                         </td>
+                       </tr>
+                     ))}
+                   </tbody>
+                </table>
               </div>
             </div>
           )}
+
+          {/* Placeholders for settings/users/analytics */}
+          {['users', 'analytics', 'settings'].includes(activeTab) && (
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'60vh', color:'#9CA3AF' }}>
+              <div style={{ padding:'24px', background:'#ffffff', borderRadius:'16px', boxShadow:'0 1px 3px rgba(0,0,0,0.05)', textAlign:'center' }}>
+                <Settings size={48} color="#D1D5DB" style={{ marginBottom:'16px' }} />
+                <h3 style={{ fontSize:'1.25rem', color:'#111827', marginBottom:'8px' }}>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Module</h3>
+                <p style={{ fontSize:'0.875rem' }}>This feature is coming soon in the next update.</p>
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
 
-      {/* â•â• MODAL: Product â•â• */}
-      <Modal open={isProdOpen} onClose={()=>setProdOpen(false)} title={editingProdId ? 'âœï¸ Edit Product' : '+ New Product'}>
-        <form onSubmit={handleSaveProduct} style={{ display:'flex', flexDirection:'column', gap:'14px' }}>
-          <Field label="Product Name *"><input style={mInput} value={prodForm.name} onChange={e=>setProdForm({...prodForm,name:e.target.value})} required placeholder="e.g. Basmati Rice 1kg"/></Field>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
-            <Field label="Price (â‚¹) *"><input type="number" style={mInput} value={prodForm.price} onChange={e=>setProdForm({...prodForm,price:e.target.value})} required/></Field>
-            <Field label="Stock *"><input type="number" style={mInput} value={prodForm.stock} onChange={e=>setProdForm({...prodForm,stock:e.target.value})} required/></Field>
+      {/* MODALS */}
+      <Modal open={isProdOpen} onClose={()=>setProdOpen(false)} title={editingProdId ? 'Edit Product' : 'Add New Product'}>
+        <form onSubmit={handleSaveProduct} style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
+          <Field label="Product Name *"><input style={mInput} value={prodForm.name} onChange={e=>setProdForm({...prodForm,name:e.target.value})} required placeholder="e.g. Basmati Rice"/></Field>
+          <div style={{ display:'flex', gap:'12px' }}>
+            <div style={{ flex:1 }}><Field label="Price (â‚¹) *"><input type="number" style={mInput} value={prodForm.price} onChange={e=>setProdForm({...prodForm,price:e.target.value})} required/></Field></div>
+            <div style={{ flex:1 }}><Field label="Stock Count *"><input type="number" style={mInput} value={prodForm.stock} onChange={e=>setProdForm({...prodForm,stock:e.target.value})} required/></Field></div>
           </div>
           <Field label="Category *">
-            <select style={{ ...mInput, appearance:'none' }} value={prodForm.category} onChange={e=>setProdForm({...prodForm,category:e.target.value})} required>
-              <option value="">Select category</option>
+            <select style={{ ...mInput, cursor:'pointer' }} value={prodForm.category} onChange={e=>setProdForm({...prodForm,category:e.target.value})} required>
+              <option value="">Select category...</option>
               {dbCategories.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
             </select>
           </Field>
-          <Field label="Product Image *">
-            {(prodPreview||prodForm.image_url) && <img src={prodPreview||prodForm.image_url} alt="preview" style={{ width:'72px', height:'72px', objectFit:'cover', borderRadius:'10px', marginBottom:'8px', border:'1px solid rgba(255,255,255,0.1)' }}/>}
-            <input type="file" accept="image/*" style={mInput} onChange={e=>{if(e.target.files?.[0]){setProdFile(e.target.files[0]);setProdPreview(URL.createObjectURL(e.target.files[0]));}}}/>
+          <Field label="Product Image">
+             {prodPreview || prodForm.image_url ? <img src={prodPreview||prodForm.image_url} alt="" style={{ width:'60px', height:'60px', borderRadius:'8px', objectFit:'cover', marginBottom:'10px', border:'1px solid #E5E7EB' }}/> : null}
+             <input type="file" accept="image/*" style={{ ...mInput, background:'#ffffff' }} onChange={e=>{if(e.target.files?.[0]){setProdFile(e.target.files[0]);setProdPreview(URL.createObjectURL(e.target.files[0]));}}}/>
           </Field>
-          <Field label="Description"><textarea style={{ ...mInput, resize:'vertical', minHeight:'68px' }} rows="2" value={prodForm.description} onChange={e=>setProdForm({...prodForm,description:e.target.value})}/></Field>
-          <div style={{ display:'flex', gap:'10px', marginTop:'4px' }}>
+          <div style={{ display:'flex', gap:'12px', marginTop:'8px' }}>
             <CancelBtn onClick={()=>setProdOpen(false)}/>
-            <SaveBtn loading={prodUploading} label="Save Product" editLabel={editingProdId?'Save Changes':null}/>
+            <SaveBtn loading={prodUploading} label="Save Product"/>
           </div>
         </form>
       </Modal>
 
-      {/* â•â• MODAL: Category â•â• */}
-      <Modal open={isCatOpen} onClose={()=>setCatOpen(false)} title={editingCatId ? 'âœï¸ Edit Category' : '+ New Category'}>
-        <form onSubmit={handleSaveCat} style={{ display:'flex', flexDirection:'column', gap:'14px' }}>
-          <Field label="Category Name *"><input style={mInput} value={catForm.name} onChange={e=>setCatForm({...catForm,name:e.target.value})} required placeholder="e.g. Dairy & Eggs"/></Field>
-          <Field label="Category Image *">
-            {(catPreview||catForm.image_url) && <img src={catPreview||catForm.image_url} alt="preview" style={{ width:'72px', height:'72px', objectFit:'cover', borderRadius:'10px', marginBottom:'8px', border:'1px solid rgba(255,255,255,0.1)' }}/>}
-            <input type="file" accept="image/*" style={mInput} onChange={e=>{if(e.target.files?.[0]){setCatFile(e.target.files[0]);setCatPreview(URL.createObjectURL(e.target.files[0]));}}}/>
+      <Modal open={isCatOpen} onClose={()=>setCatOpen(false)} title={editingCatId ? 'Edit Category' : 'Add New Category'}>
+        <form onSubmit={handleSaveCat} style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
+          <Field label="Category Name *"><input style={mInput} value={catForm.name} onChange={e=>setCatForm({...catForm,name:e.target.value})} required placeholder="e.g. Snacks"/></Field>
+          <Field label="Category Image">
+             {catPreview || catForm.image_url ? <img src={catPreview||catForm.image_url} alt="" style={{ width:'60px', height:'60px', borderRadius:'8px', objectFit:'cover', marginBottom:'10px', border:'1px solid #E5E7EB' }}/> : null}
+             <input type="file" accept="image/*" style={{ ...mInput, background:'#ffffff' }} onChange={e=>{if(e.target.files?.[0]){setCatFile(e.target.files[0]);setCatPreview(URL.createObjectURL(e.target.files[0]));}}}/>
           </Field>
-          <div style={{ display:'flex', gap:'10px', marginTop:'4px' }}>
+          <div style={{ display:'flex', gap:'12px', marginTop:'8px' }}>
             <CancelBtn onClick={()=>setCatOpen(false)}/>
-            <SaveBtn loading={catUploading} label="Save Category" editLabel={editingCatId?'Save Changes':null}/>
+            <SaveBtn loading={catUploading} label="Save Category"/>
           </div>
         </form>
       </Modal>
 
-      {/* â•â• MODAL: Driver â•â• */}
-      <Modal open={isDriverOpen} onClose={()=>setDriverOpen(false)} title={editingDriverId ? 'âœï¸ Edit Driver' : 'ðŸš´ Add Driver'}>
-        <form onSubmit={handleSaveDriver} style={{ display:'flex', flexDirection:'column', gap:'14px' }}>
-          {[['Full Name','text','name','e.g. Rahul Khan'],['Phone','tel','phone','03XX-XXXXXXX'],['Username','text','username','login handle'],['Password','text','password','min 6 chars']].map(([lbl,type,key,ph])=>(
-            <Field key={key} label={`${lbl} *`}>
-              <input type={type} style={mInput} value={driverForm[key]} onChange={e=>setDriverForm({...driverForm,[key]:e.target.value})} required placeholder={ph}/>
-            </Field>
-          ))}
-          <div style={{ display:'flex', gap:'10px', marginTop:'4px' }}>
+      <Modal open={isDriverOpen} onClose={()=>setDriverOpen(false)} title={editingDriverId ? 'Edit Delivery Boy' : 'Add Delivery Boy'}>
+        <form onSubmit={handleSaveDriver} style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
+          <Field label="Full Name *"><input style={mInput} value={driverForm.name} onChange={e=>setDriverForm({...driverForm,name:e.target.value})} required/></Field>
+          <Field label="Phone *"><input type="tel" style={mInput} value={driverForm.phone} onChange={e=>setDriverForm({...driverForm,phone:e.target.value})} required/></Field>
+          <Field label="Username *"><input style={mInput} value={driverForm.username} onChange={e=>setDriverForm({...driverForm,username:e.target.value})} required/></Field>
+          <Field label="Password *"><input type="text" style={mInput} value={driverForm.password} onChange={e=>setDriverForm({...driverForm,password:e.target.value})} required/></Field>
+          <div style={{ display:'flex', gap:'12px', marginTop:'8px' }}>
             <CancelBtn onClick={()=>setDriverOpen(false)}/>
-            <SaveBtn label="Save Driver" editLabel={editingDriverId?'Save Changes':null}/>
+            <SaveBtn loading={false} label="Save Delivery Boy"/>
           </div>
         </form>
       </Modal>
