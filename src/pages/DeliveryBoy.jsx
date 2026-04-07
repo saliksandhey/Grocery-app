@@ -1,310 +1,99 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { useAppStore } from '../store';
 import {
-  Truck, CheckCircle2, Package, MapPin, Phone, User,
-  LogOut, ShoppingBag, Clock, IndianRupee, Navigation,
-  ChevronRight, Star, Zap, Eye, EyeOff, Lock, AlertCircle,
-  ArrowRight, CircleDot, Bike
+  Phone, User, CheckCircle2,
+  MapPin, AlertCircle,
+  Zap, Eye, EyeOff, Lock,
+  CircleDot, Bike, Map, LogOut
 } from 'lucide-react';
 
-/* â”€â”€â”€ status pipeline â”€â”€â”€ */
+/* ─── status pipeline ─── */
+const statusMeta = {
+  'Packed':           { label: 'Packed',     bg: '#fee2e2', color: '#ef4444' },
+  'Out for Delivery': { label: 'On Route',   bg: '#dbeafe', color: '#3b82f6' },
+  'Delivered':        { label: 'Delivered',  bg: '#dcfce7', color: '#16a34a' },
+};
+
 const STEPS = [
-  { status: 'Ready for Delivery', label: 'Accept Order',     next: 'Driver Accepted',  icon: ShoppingBag, color: '#f59e0b', gradient: 'linear-gradient(135deg,#f59e0b,#d97706)' },
-  { status: 'Driver Accepted',    label: 'Picked Up',        next: 'Out for Delivery', icon: Package,     color: '#6366f1', gradient: 'linear-gradient(135deg,#6366f1,#4338ca)' },
-  { status: 'Out for Delivery',   label: 'Mark Delivered',   next: 'Delivered',        icon: CheckCircle2,color: '#6d28d9', gradient: 'linear-gradient(135deg,#6d28d9,#5b21b6)' },
+  { status: 'Packed',           label: 'Picked Up',      next: 'Out for Delivery', bg: '#f59e0b' },
+  { status: 'Out for Delivery', label: 'Delivered',      next: 'Delivered',        bg: '#22c55e' },
 ];
 
-const statusMeta = {
-  'Ready for Delivery': { label: 'Pending Pickup',    bg: '#fef3c7', color: '#d97706', dot: '#f59e0b' },
-  'Driver Accepted':    { label: 'Picked Up',         bg: '#ede9fe', color: '#7c3aed', dot: '#8b5cf6' },
-  'Out for Delivery':   { label: 'Out for Delivery',  bg: '#dbeafe', color: '#1d4ed8', dot: '#3b82f6' },
-  'Delivered':          { label: 'Delivered âœ“',       bg: '#d1fae5', color: '#065f46', dot: '#8b5cf6' },
-};
-
-/* â”€â”€â”€ step progress bar â”€â”€â”€ */
-const StepBar = ({ status }) => {
-  const steps = ['Ready for Delivery','Driver Accepted','Out for Delivery','Delivered'];
-  const idx = steps.indexOf(status);
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0', marginBottom: '20px' }}>
-      {steps.map((s, i) => (
-        <div key={s} style={{ display: 'flex', alignItems: 'center', flex: i < steps.length - 1 ? 1 : 'none' }}>
-          <div style={{
-            width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: i <= idx
-              ? 'linear-gradient(135deg,#6d28d9,#5b21b6)'
-              : 'rgba(255,255,255,0.08)',
-            border: i <= idx ? 'none' : '1.5px solid rgba(255,255,255,0.15)',
-            fontSize: '0.65rem', fontWeight: 800,
-            color: i <= idx ? 'white' : '#475569',
-            transition: 'all 0.3s',
-            boxShadow: i <= idx ? '0 2px 8px rgba(109,40,217,0.4)' : 'none',
-          }}>
-            {i < idx ? 'âœ“' : i + 1}
-          </div>
-          {i < steps.length - 1 && (
-            <div style={{
-              flex: 1, height: '3px', borderRadius: '2px',
-              background: i < idx
-                ? 'linear-gradient(90deg,#6d28d9,#5b21b6)'
-                : 'rgba(255,255,255,0.08)',
-              transition: 'background 0.4s',
-              margin: '0 2px',
-            }} />
-          )}
-        </div>
-      ))}
-    </div>
-  );
-};
-
-/* â”€â”€â”€ order card â”€â”€â”€ */
+/* ─── order card ─── */
 const OrderCard = ({ order, onUpdateStatus }) => {
-  const [expanded, setExpanded] = useState(true);
-  const meta = statusMeta[order.status] || { label: order.status, bg: '#f1f5f9', color: '#64748b', dot: '#94a3b8' };
+  const meta = statusMeta[order.status] || { label: order.status, bg: '#f1f5f9', color: '#64748b' };
   const step = STEPS.find(s => s.status === order.status);
-  const isDelivered = order.status === 'Delivered';
-  const isCOD = order.payment_method === 'cod';
 
   return (
-    <div style={{
-      background: 'linear-gradient(145deg, rgba(30,41,59,0.9), rgba(15,23,42,0.95))',
-      border: `1px solid ${isDelivered ? 'rgba(109,40,217,0.3)' : 'rgba(255,255,255,0.08)'}`,
-      borderRadius: '20px',
-      overflow: 'hidden',
-      boxShadow: isDelivered
-        ? '0 4px 24px rgba(109,40,217,0.15)'
-        : '0 4px 24px rgba(0,0,0,0.3)',
-      transition: 'all 0.3s',
-      marginBottom: '16px',
-    }}>
-      {/* card header */}
-      <div
-        style={{
-          padding: '16px 18px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          cursor: 'pointer',
-          borderBottom: expanded ? '1px solid rgba(255,255,255,0.06)' : 'none',
-        }}
-        onClick={() => setExpanded(v => !v)}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: '42px', height: '42px', borderRadius: '12px',
-            background: isDelivered
-              ? 'linear-gradient(135deg,#6d28d9,#5b21b6)'
-              : 'linear-gradient(135deg,#f59e0b,#d97706)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: isDelivered
-              ? '0 4px 12px rgba(109,40,217,0.4)'
-              : '0 4px 12px rgba(245,158,11,0.4)',
-          }}>
-            {isDelivered ? <CheckCircle2 size={20} color="white" /> : <Bike size={20} color="white" />}
-          </div>
-          <div>
-            <div style={{ fontWeight: 800, color: '#f1f5f9', fontSize: '0.9rem' }}>
-              Order #{order.id.slice(0, 8)}
-            </div>
-            <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
-              {order.order_items?.length} item{order.order_items?.length !== 1 ? 's' : ''} Â· {isCOD ? 'Cash on Delivery' : 'Prepaid'}
-            </div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{
-            padding: '4px 10px', borderRadius: '20px',
-            background: meta.bg + '22',
-            border: `1px solid ${meta.dot}44`,
-            color: meta.color, fontSize: '0.68rem', fontWeight: 700,
-            letterSpacing: '0.03em',
-          }}>
-            <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: meta.dot, display: 'inline-block', marginRight: '5px', verticalAlign: 'middle' }} />
-            {meta.label}
-          </span>
-          <ChevronRight size={16} color="#475569"
-            style={{ transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
+    <div className="db-card">
+      {/* Top: Order ID & Status */}
+      <div className="db-card-top">
+        <div className="db-order-id">Order #{order.id.slice(0, 6).toUpperCase()}</div>
+        <div className="db-badge" style={{ background: meta.bg, color: meta.color }}>
+          {meta.label}
         </div>
       </div>
 
-      {/* expanded body */}
-      {expanded && (
-        <div style={{ padding: '18px' }}>
-
-          {/* step progress */}
-          <StepBar status={order.status} />
-
-          {/* amount chip */}
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            background: isCOD ? 'rgba(239,68,68,0.12)' : 'rgba(109,40,217,0.1)',
-            border: `1px solid ${isCOD ? 'rgba(239,68,68,0.25)' : 'rgba(109,40,217,0.2)'}`,
-            borderRadius: '12px', padding: '12px 16px',
-            marginBottom: '16px',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <IndianRupee size={18} color={isCOD ? '#f87171' : '#c084fc'} />
-              <div>
-                <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                  {isCOD ? 'Collect Cash' : 'Prepaid Order'}
-                </div>
-                <div style={{ fontWeight: 900, fontSize: '1.25rem', color: isCOD ? '#f87171' : '#c084fc' }}>
-                  â‚¹{order.grand_total}
-                </div>
-              </div>
-            </div>
-            {isCOD && (
-              <div style={{
-                background: 'rgba(239,68,68,0.2)', color: '#f87171',
-                fontSize: '0.68rem', fontWeight: 800, padding: '4px 10px',
-                borderRadius: '8px', letterSpacing: '0.05em',
-              }}>COD</div>
-            )}
-            {!isCOD && (
-              <div style={{
-                background: 'rgba(109,40,217,0.2)', color: '#c084fc',
-                fontSize: '0.68rem', fontWeight: 800, padding: '4px 10px',
-                borderRadius: '8px', letterSpacing: '0.05em',
-              }}>PAID</div>
-            )}
+      {/* Customer block */}
+      <div className="db-customer-block">
+        <div className="db-customer-row">
+          <div className="db-avatar"><User size={18} color="#475569" /></div>
+          <div className="db-customer-name">{order.customer_details?.name || 'Guest User'}</div>
+        </div>
+        <div className="db-address-row">
+          <MapPin size={18} color="#f59e0b" style={{ marginTop: 2, flexShrink: 0 }} />
+          <div className="db-address-text">
+            {order.customer_details?.address || 'No address provided'}
           </div>
+        </div>
+      </div>
 
-          {/* customer block */}
-          <div style={{
-            background: 'rgba(15,23,42,0.6)',
-            border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: '14px', padding: '14px 16px',
-            marginBottom: '14px',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-              <div style={{
-                width: '40px', height: '40px', borderRadius: '50%',
-                background: 'linear-gradient(135deg,#6366f1,#4338ca)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontWeight: 800, color: 'white', fontSize: '0.85rem', flexShrink: 0,
-              }}>
-                {order.customer_details?.name?.[0]?.toUpperCase() || 'C'}
-              </div>
-              <div>
-                <div style={{ fontWeight: 700, color: '#f1f5f9', fontSize: '0.9rem' }}>{order.customer_details?.name}</div>
-                <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Customer</div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '10px' }}>
-              <MapPin size={14} color="#f59e0b" style={{ marginTop: '2px', flexShrink: 0 }} />
-              <span style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: 1.5 }}>
-                {order.customer_details?.address || 'Address not provided'}
-              </span>
-            </div>
-            {/* action buttons */}
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <a
-                href={`tel:${order.customer_details?.phone}`}
-                style={{
-                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                  padding: '10px', borderRadius: '10px',
-                  background: 'linear-gradient(135deg,#6d28d9,#5b21b6)',
-                  color: 'white', fontWeight: 700, fontSize: '0.8rem',
-                  textDecoration: 'none',
-                  boxShadow: '0 4px 12px rgba(109,40,217,0.3)',
-                }}
-              >
-                <Phone size={14} /> Call
-              </a>
-              <a
-                href={`https://maps.google.com/?q=${encodeURIComponent(order.customer_details?.address || '')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                  padding: '10px', borderRadius: '10px',
-                  background: 'linear-gradient(135deg,#3b82f6,#2563eb)',
-                  color: 'white', fontWeight: 700, fontSize: '0.8rem',
-                  textDecoration: 'none',
-                  boxShadow: '0 4px 12px rgba(59,130,246,0.3)',
-                }}
-              >
-                <Navigation size={14} /> Navigate
-              </a>
-            </div>
-          </div>
+      {/* Amount */}
+      <div className="db-amount-row">
+        <span className="db-amount-label">Amount to Collect</span>
+        <span className="db-amount-value">₹{order.grand_total}</span>
+      </div>
 
-          {/* items list */}
-          <div style={{
-            background: 'rgba(15,23,42,0.4)',
-            border: '1px solid rgba(255,255,255,0.05)',
-            borderRadius: '12px', padding: '12px 14px',
-            marginBottom: '16px',
-          }}>
-            <div style={{ fontSize: '0.72rem', color: '#475569', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
-              Items to Deliver
-            </div>
-            {order.order_items?.map((item, idx) => (
-              <div key={idx} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '6px 0',
-                borderBottom: idx < order.order_items.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{
-                    width: '22px', height: '22px', borderRadius: '6px',
-                    background: 'rgba(109,40,217,0.15)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '0.65rem', fontWeight: 800, color: '#c084fc',
-                  }}>{item.quantity}Ã—</div>
-                  <span style={{ fontSize: '0.82rem', color: '#cbd5e1' }}>{item.product?.name}</span>
-                </div>
-                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#94a3b8' }}>â‚¹{item.quantity * (item.product?.price || 0)}</span>
-              </div>
-            ))}
-          </div>
+      {/* Action links */}
+      <div className="db-action-links">
+        <a href={`tel:${order.customer_details?.phone}`} className="db-link db-link-call">
+          <Phone size={20} /> Call Customer
+        </a>
+        <a
+          href={`https://maps.google.com/?q=${encodeURIComponent(order.customer_details?.address || '')}`}
+          target="_blank" rel="noreferrer"
+          className="db-link db-link-map"
+        >
+          <Map size={20} /> Open in Google Maps
+        </a>
+      </div>
 
-          {/* action button */}
-          {step && (
-            <button
-              onClick={() => onUpdateStatus(order.id, step.next)}
-              style={{
-                width: '100%', padding: '15px',
-                background: step.gradient,
-                color: 'white', border: 'none', borderRadius: '14px',
-                fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                fontFamily: 'inherit',
-                boxShadow: `0 6px 20px ${step.color}44`,
-                letterSpacing: '0.01em',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-1px)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'none'}
-            >
-              <step.icon size={18} />
-              {step.label}
-              <ArrowRight size={16} />
-            </button>
-          )}
+      {/* Status action button */}
+      {step && order.status !== 'Delivered' && (
+        <button
+          className="db-action-btn"
+          style={{ background: step.bg }}
+          onClick={() => onUpdateStatus(order.id, step.next, 'delivery')}
+          onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
+          onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+        >
+          {step.label}
+        </button>
+      )}
 
-          {isDelivered && (
-            <div style={{
-              width: '100%', padding: '15px',
-              background: 'rgba(109,40,217,0.12)',
-              border: '1px solid rgba(109,40,217,0.25)',
-              color: '#c084fc', borderRadius: '14px',
-              fontWeight: 800, fontSize: '0.9rem',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-              textAlign: 'center',
-            }}>
-              <CheckCircle2 size={18} /> Delivered Successfully ðŸŽ‰
-            </div>
-          )}
+      {order.status === 'Delivered' && (
+        <div className="db-delivered-badge">
+          <CheckCircle2 size={20} /> Delivered Successfully 🎉
         </div>
       )}
     </div>
   );
 };
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* ══════════════════════════════════════════════════════════════
    MAIN COMPONENT
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+══════════════════════════════════════════════════════════════ */
 export default function DeliveryBoy() {
   const currentDeliveryBoy = useAppStore(s => s.currentDeliveryBoy);
   const loginDeliveryBoy   = useAppStore(s => s.loginDeliveryBoy);
@@ -312,334 +101,337 @@ export default function DeliveryBoy() {
   const orders             = useAppStore(s => s.orders);
   const updateOrderStatus  = useAppStore(s => s.updateOrderStatus);
 
-  const [username,   setUsername]   = useState('');
-  const [password,   setPassword]   = useState('');
-  const [showPass,   setShowPass]   = useState(false);
-  const [error,      setError]      = useState('');
-  const [loading,    setLoading]    = useState(false);
-  const [activeTab,  setActiveTab]  = useState('active');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [error,    setError]    = useState('');
+  const [loading,  setLoading]  = useState(false);
 
-  /* â”€â”€ Login â”€â”€ */
+  /* ─── Login Screen ─── */
   if (!currentDeliveryBoy) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(160deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        padding: '24px', fontFamily: "'Inter', sans-serif",
-      }}>
-        {/* bg decoration */}
-        <div style={{
-          position: 'fixed', top: '-80px', right: '-80px',
-          width: '280px', height: '280px', borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(109,40,217,0.12) 0%, transparent 70%)',
-          pointerEvents: 'none',
-        }} />
-        <div style={{
-          position: 'fixed', bottom: '-100px', left: '-60px',
-          width: '240px', height: '240px', borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%)',
-          pointerEvents: 'none',
-        }} />
-
-        {/* logo area */}
-        <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-          <div style={{
-            width: '72px', height: '72px', borderRadius: '20px',
-            background: 'linear-gradient(135deg, #6d28d9, #5b21b6)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 16px',
-            boxShadow: '0 8px 32px rgba(109,40,217,0.45)',
-          }}>
-            <Bike size={34} color="white" />
-          </div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#f1f5f9', letterSpacing: '-0.02em' }}>
-            Rider Portal
-          </div>
-          <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '6px' }}>
-            Malerkotla Fresh Â· Delivery Partner
-          </div>
+      <div className="db-login-root">
+        <style>{CSS}</style>
+        <div className="db-login-hero">
+          <div className="db-login-icon"><Bike size={40} color="white" /></div>
+          <h1 className="db-login-title">Rider Login</h1>
+          <p className="db-login-sub">Malerkotla Fresh · Delivery Partner</p>
         </div>
 
-        {/* login card */}
-        <div style={{
-          background: 'rgba(30,41,59,0.8)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: '24px',
-          padding: '32px 28px',
-          width: '100%', maxWidth: '380px',
-          backdropFilter: 'blur(16px)',
-          boxShadow: '0 24px 64px rgba(0,0,0,0.4)',
-        }}>
-          <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f1f5f9', marginBottom: '6px' }}>
-            Welcome back ðŸ‘‹
-          </div>
-          <div style={{ fontSize: '0.82rem', color: '#64748b', marginBottom: '28px' }}>
-            Sign in with your rider credentials
-          </div>
-
+        <div className="db-login-card">
           {error && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '8px',
-              padding: '12px 14px', borderRadius: '10px', marginBottom: '18px',
-              background: 'rgba(239,68,68,0.12)',
-              border: '1px solid rgba(239,68,68,0.25)',
-              color: '#f87171', fontSize: '0.85rem', fontWeight: 600,
-            }}>
-              <AlertCircle size={16} /> {error}
+            <div className="db-error-box">
+              <AlertCircle size={20} /> {error}
             </div>
           )}
 
-          <form onSubmit={async e => {
-            e.preventDefault();
-            setLoading(true); setError('');
-            const ok = await loginDeliveryBoy(username, password);
-            setLoading(false);
-            if (!ok) setError('Invalid username or password');
-          }} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-
-            {/* username */}
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
-                Username
-              </label>
-              <div style={{ position: 'relative' }}>
-                <User size={16} color="#475569" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+          <form
+            onSubmit={async e => {
+              e.preventDefault();
+              setLoading(true); setError('');
+              const ok = await loginDeliveryBoy(username, password);
+              setLoading(false);
+              if (!ok) setError('Invalid username or password');
+            }}
+            className="db-login-form"
+          >
+            <div className="db-field">
+              <label className="db-label">Username</label>
+              <div className="db-input-wrap">
+                <User size={20} color="#94a3b8" className="db-input-icon" />
                 <input
-                  type="text"
-                  placeholder="Enter your username"
-                  value={username}
-                  onChange={e => setUsername(e.target.value)}
-                  required
-                  style={{
-                    width: '100%', padding: '12px 14px 12px 42px',
-                    background: 'rgba(15,23,42,0.8)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '12px', outline: 'none',
-                    color: '#f1f5f9', fontSize: '0.9rem',
-                    fontFamily: 'inherit', transition: 'border-color 0.18s',
-                  }}
-                  onFocus={e => e.target.style.borderColor = 'rgba(109,40,217,0.5)'}
-                  onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+                  type="text" placeholder="Enter username"
+                  value={username} onChange={e => setUsername(e.target.value)}
+                  required className="db-input"
                 />
               </div>
             </div>
 
-            {/* password */}
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
-                Password
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Lock size={16} color="#475569" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+            <div className="db-field">
+              <label className="db-label">Password</label>
+              <div className="db-input-wrap">
+                <Lock size={20} color="#94a3b8" className="db-input-icon" />
                 <input
-                  type={showPass ? 'text' : 'password'}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  style={{
-                    width: '100%', padding: '12px 44px 12px 42px',
-                    background: 'rgba(15,23,42,0.8)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '12px', outline: 'none',
-                    color: '#f1f5f9', fontSize: '0.9rem',
-                    fontFamily: 'inherit', transition: 'border-color 0.18s',
-                  }}
-                  onFocus={e => e.target.style.borderColor = 'rgba(109,40,217,0.5)'}
-                  onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+                  type={showPass ? 'text' : 'password'} placeholder="Enter password"
+                  value={password} onChange={e => setPassword(e.target.value)}
+                  required className="db-input db-input-pass"
                 />
-                <button type="button" onClick={() => setShowPass(v => !v)}
-                  style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#475569' }}>
-                  {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                <button type="button" onClick={() => setShowPass(v => !v)} className="db-eye-btn">
+                  {showPass ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: '100%', padding: '14px',
-                background: loading ? 'rgba(109,40,217,0.5)' : 'linear-gradient(135deg, #6d28d9, #5b21b6)',
-                color: 'white', border: 'none', borderRadius: '12px',
-                fontWeight: 800, fontSize: '0.95rem', cursor: loading ? 'default' : 'pointer',
-                fontFamily: 'inherit', marginTop: '4px',
-                boxShadow: '0 6px 20px rgba(109,40,217,0.35)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                transition: 'all 0.2s',
-              }}
-            >
-              {loading ? (
-                <><CircleDot size={18} style={{ animation: 'spin 1s linear infinite' }} /> Logging inâ€¦</>
-              ) : (
-                <><Zap size={18} /> Login to Dashboard</>
-              )}
+            <button type="submit" disabled={loading} className="db-submit-btn">
+              {loading
+                ? <><CircleDot size={22} style={{ animation: 'dbSpin 1s linear infinite' }} /> Logging in…</>
+                : <><Zap size={22} /> Login</>}
             </button>
           </form>
-
-          <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '0.75rem', color: '#475569', lineHeight: 1.6 }}>
-            Don't have credentials?<br />
-            Contact your Admin to get access.
-          </div>
         </div>
-
-        <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
-  /* â”€â”€ Dashboard â”€â”€ */
-  const myOrders    = orders.filter(o => o.delivery_boy_id === currentDeliveryBoy.id);
+  /* ─── Dashboard ─── */
+  const myOrders     = orders.filter(o => o.delivery_boy_id === currentDeliveryBoy.id);
   const activeOrders = myOrders.filter(o => o.status !== 'Delivered');
   const doneOrders   = myOrders.filter(o => o.status === 'Delivered');
-  const totalEarned  = doneOrders.reduce((s, o) => s + (o.grand_total || 0), 0);
-
-  const displayed = activeTab === 'active' ? activeOrders : doneOrders;
+  const todayEarnings = doneOrders.reduce((acc, o) => acc + (o.grand_total || 0), 0);
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#0f172a',
-      fontFamily: "'Inter', sans-serif",
-    }}>
-      {/* â”€â”€ Header â”€â”€ */}
-      <div style={{
-        background: 'linear-gradient(135deg, #6d28d9 0%, #5b21b6 60%, #4c1d95 100%)',
-        padding: '20px 18px 28px',
-        position: 'relative', overflow: 'hidden',
-      }}>
-        {/* bg circles */}
-        <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '120px', height: '120px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
-        <div style={{ position: 'absolute', bottom: '-40px', right: '30px', width: '90px', height: '90px', borderRadius: '50%', background: 'rgba(255,255,255,0.07)' }} />
+    <div className="db-root">
+      <style>{CSS}</style>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{
-              width: '48px', height: '48px', borderRadius: '14px',
-              background: 'rgba(255,255,255,0.2)',
-              backdropFilter: 'blur(8px)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 900, color: 'white', fontSize: '1.1rem',
-              border: '1.5px solid rgba(255,255,255,0.3)',
-            }}>
-              {currentDeliveryBoy.name?.[0]?.toUpperCase()}
-            </div>
-            <div>
-              <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.75)', fontWeight: 600 }}>Good day,</div>
-              <div style={{ fontWeight: 900, color: 'white', fontSize: '1.1rem', letterSpacing: '-0.01em' }}>
-                {currentDeliveryBoy.name}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#e9d5ff', animation: 'pulse 2s infinite' }} />
-                <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>Online Â· Ready</span>
-              </div>
-            </div>
+      {/* Header */}
+      <header className="db-header">
+        <div className="db-header-title">My Deliveries</div>
+        <div className="db-header-right">
+          <span className="db-rider-name">{currentDeliveryBoy.name}</span>
+          <button onClick={logoutDeliveryBoy} className="db-logout-btn" title="Logout">
+            <LogOut size={20} color="#475569" />
+          </button>
+        </div>
+      </header>
+
+      <div className="db-body">
+        {/* Earnings card */}
+        <div className="db-earnings-card">
+          <div className="db-earnings-block">
+            <div className="db-earnings-label">Today's Earnings</div>
+            <div className="db-earnings-value">₹{todayEarnings}</div>
           </div>
-          <button
-            onClick={logoutDeliveryBoy}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
-              padding: '8px 14px', borderRadius: '10px',
-              background: 'rgba(255,255,255,0.15)',
-              backdropFilter: 'blur(8px)',
-              border: '1px solid rgba(255,255,255,0.25)',
-              color: 'white', fontWeight: 700, fontSize: '0.8rem',
-              cursor: 'pointer', fontFamily: 'inherit',
-            }}
-          >
-            <LogOut size={14} /> Logout
-          </button>
+          <div className="db-earnings-divider" />
+          <div className="db-earnings-block db-earnings-block-right">
+            <div className="db-earnings-label">Deliveries Done</div>
+            <div className="db-earnings-value db-earnings-value-white">{doneOrders.length}</div>
+          </div>
         </div>
 
-        {/* stats row */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
-          gap: '10px', marginTop: '20px', position: 'relative', zIndex: 1,
-        }}>
-          {[
-            { label: 'Active',    value: activeOrders.length, icon: Bike },
-            { label: 'Delivered', value: doneOrders.length,   icon: CheckCircle2 },
-            { label: 'Earned',    value: `â‚¹${totalEarned}`,   icon: IndianRupee },
-          ].map(s => (
-            <div key={s.label} style={{
-              background: 'rgba(255,255,255,0.15)',
-              backdropFilter: 'blur(8px)',
-              borderRadius: '14px', padding: '12px 10px',
-              border: '1px solid rgba(255,255,255,0.2)',
-              textAlign: 'center',
-            }}>
-              <s.icon size={16} color="rgba(255,255,255,0.8)" style={{ margin: '0 auto 6px' }} />
-              <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'white' }}>{s.value}</div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.7)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{s.label}</div>
-            </div>
-          ))}
+        {/* Orders heading */}
+        <div className="db-orders-header">
+          <span className="db-orders-title">Active Orders</span>
+          <span className="db-orders-count">
+            {activeOrders.length} {activeOrders.length === 1 ? 'Order' : 'Orders'}
+          </span>
         </div>
-      </div>
 
-      {/* â”€â”€ Tab bar â”€â”€ */}
-      <div style={{
-        display: 'flex', gap: '0',
-        background: 'rgba(30,41,59,0.8)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        padding: '0 18px',
-      }}>
-        {[
-          { id: 'active',    label: `Active (${activeOrders.length})` },
-          { id: 'delivered', label: `Delivered (${doneOrders.length})` },
-        ].map(t => (
-          <button
-            key={t.id}
-            onClick={() => setActiveTab(t.id)}
-            style={{
-              flex: 1, padding: '14px 12px',
-              background: 'none', border: 'none', cursor: 'pointer',
-              fontFamily: 'inherit', fontWeight: 700, fontSize: '0.875rem',
-              color: activeTab === t.id ? '#6d28d9' : '#475569',
-              borderBottom: activeTab === t.id ? '2px solid #6d28d9' : '2px solid transparent',
-              transition: 'all 0.18s',
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* â”€â”€ Orders list â”€â”€ */}
-      <div style={{ padding: '18px 16px', paddingBottom: '40px' }}>
-        {displayed.length === 0 ? (
-          <div style={{
-            textAlign: 'center', padding: '56px 24px',
-            background: 'rgba(30,41,59,0.4)',
-            border: '1px solid rgba(255,255,255,0.05)',
-            borderRadius: '20px', marginTop: '8px',
-          }}>
-            <div style={{ fontSize: '48px', marginBottom: '14px' }}>
-              {activeTab === 'active' ? 'ðŸï¸' : 'âœ…'}
-            </div>
-            <div style={{ fontWeight: 700, color: '#94a3b8', marginBottom: '6px', fontSize: '1rem' }}>
-              {activeTab === 'active' ? 'No Active Orders' : 'No Deliveries Yet'}
-            </div>
-            <div style={{ fontSize: '0.82rem', color: '#475569' }}>
-              {activeTab === 'active'
-                ? 'Waiting for the admin to assign orders to you.'
-                : 'Completed orders will appear here.'}
-            </div>
+        {/* Orders list */}
+        {activeOrders.length === 0 ? (
+          <div className="db-empty-state">
+            <div className="db-empty-icon"><CheckCircle2 size={32} color="#94a3b8" /></div>
+            <div className="db-empty-title">You're all caught up!</div>
+            <div className="db-empty-sub">Waiting for new orders to be assigned.</div>
           </div>
         ) : (
-          displayed.map(order => (
-            <OrderCard key={order.id} order={order} onUpdateStatus={updateOrderStatus} />
-          ))
+          <div className="db-orders-grid">
+            {activeOrders.map(order => (
+              <OrderCard key={order.id} order={order} onUpdateStatus={updateOrderStatus} />
+            ))}
+          </div>
         )}
       </div>
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.6; transform: scale(1.3); }
-        }
-      `}</style>
     </div>
   );
 }
+
+/* ─── Scoped CSS ─── */
+const CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+  @keyframes dbSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+  .db-root, .db-login-root {
+    min-height: 100vh;
+    font-family: 'Inter', system-ui, sans-serif;
+    box-sizing: border-box;
+  }
+
+  /* ── Login ── */
+  .db-login-root {
+    background: #f1f5f9;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+  .db-login-hero { text-align: center; margin-bottom: 36px; }
+  .db-login-icon {
+    width: 80px; height: 80px; border-radius: 24px; background: #10b981;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px; box-shadow: 0 12px 32px rgba(16,185,129,0.3);
+  }
+  .db-login-title { font-size: 2rem; font-weight: 900; color: #1e293b; margin: 0 0 6px; }
+  .db-login-sub { font-size: 0.9rem; color: #64748b; margin: 0; }
+
+  .db-login-card {
+    background: white; border-radius: 24px; padding: 32px 28px;
+    width: 100%; max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.06);
+  }
+  .db-error-box {
+    display: flex; align-items: center; gap: 10px;
+    padding: 16px; border-radius: 12px; margin-bottom: 24px;
+    background: #fee2e2; color: #ef4444; font-size: 0.9rem; font-weight: 700;
+  }
+  .db-login-form { display: flex; flex-direction: column; gap: 20px; }
+  .db-field { display: flex; flex-direction: column; gap: 8px; }
+  .db-label { font-size: 0.9rem; font-weight: 800; color: #475569; }
+  .db-input-wrap { position: relative; }
+  .db-input-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+  .db-input {
+    width: 100%; padding: 16px 16px 16px 48px;
+    background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 14px;
+    font-size: 1rem; font-weight: 600; color: #1e293b; outline: none;
+    font-family: inherit; box-sizing: border-box; transition: border-color 0.2s;
+  }
+  .db-input:focus { border-color: #10b981; }
+  .db-input-pass { padding-right: 48px; }
+  .db-eye-btn {
+    position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer; color: #94a3b8;
+    display: flex; align-items: center;
+  }
+  .db-submit-btn {
+    width: 100%; padding: 18px; margin-top: 8px;
+    background: #10b981; color: white; border: none; border-radius: 14px;
+    font-size: 1.1rem; font-weight: 800; cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    box-shadow: 0 8px 24px rgba(16,185,129,0.3); transition: opacity 0.2s;
+  }
+  .db-submit-btn:disabled { opacity: 0.7; cursor: default; }
+
+  /* ── Dashboard ── */
+  .db-root { background: #f1f5f9; }
+
+  .db-header {
+    background: white; padding: 18px 20px;
+    display: flex; justify-content: space-between; align-items: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04); position: sticky; top: 0; z-index: 10;
+  }
+  .db-header-title { font-size: 1.4rem; font-weight: 900; color: #1e293b; }
+  .db-header-right { display: flex; align-items: center; gap: 12px; }
+  .db-rider-name { font-size: 0.9rem; font-weight: 700; color: #475569; }
+  .db-logout-btn {
+    background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 50%;
+    width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: background 0.2s; flex-shrink: 0;
+  }
+  .db-logout-btn:hover { background: #fee2e2; border-color: #fecaca; }
+
+  .db-body { padding: 20px 16px 40px; max-width: 900px; margin: 0 auto; }
+
+  .db-earnings-card {
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border-radius: 24px; padding: 24px 28px; color: white;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 28px; box-shadow: 0 12px 32px rgba(15,23,42,0.2);
+    gap: 16px;
+  }
+  .db-earnings-block { display: flex; flex-direction: column; gap: 4px; }
+  .db-earnings-block-right { text-align: right; }
+  .db-earnings-divider { width: 1px; background: rgba(255,255,255,0.15); align-self: stretch; }
+  .db-earnings-label { font-size: 0.85rem; color: #94a3b8; font-weight: 700; }
+  .db-earnings-value { font-size: 2rem; font-weight: 900; letter-spacing: -0.02em; color: #10b981; }
+  .db-earnings-value-white { color: white; }
+
+  .db-orders-header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;
+  }
+  .db-orders-title { font-size: 1.2rem; font-weight: 900; color: #1e293b; }
+  .db-orders-count {
+    background: #e0e7ff; color: #4f46e5;
+    padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 800;
+  }
+
+  /* Grid: 1 col on mobile, 2 on tablet+ */
+  .db-orders-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  /* Card */
+  .db-card {
+    background: white; border-radius: 20px; padding: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid #f1f5f9;
+  }
+  .db-card-top {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;
+  }
+  .db-order-id { font-size: 1.1rem; font-weight: 800; color: #1e293b; }
+  .db-badge { padding: 6px 12px; border-radius: 8px; font-size: 0.82rem; font-weight: 800; }
+
+  .db-customer-block {
+    background: #f8fafc; padding: 16px; border-radius: 14px; margin-bottom: 16px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .db-customer-row { display: flex; align-items: center; gap: 10px; }
+  .db-avatar {
+    width: 36px; height: 36px; border-radius: 50%; background: #e2e8f0;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .db-customer-name { font-size: 1rem; font-weight: 700; color: #334155; }
+  .db-address-row { display: flex; align-items: flex-start; gap: 8px; }
+  .db-address-text { font-size: 0.9rem; color: #475569; line-height: 1.5; font-weight: 500; }
+
+  .db-amount-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 16px; border: 2px dashed #e2e8f0; border-radius: 14px; margin-bottom: 16px;
+  }
+  .db-amount-label { font-size: 0.9rem; color: #64748b; font-weight: 700; }
+  .db-amount-value { font-size: 1.35rem; font-weight: 900; color: #10b981; }
+
+  .db-action-links { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+  .db-link {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 16px; border-radius: 14px; text-decoration: none;
+    font-weight: 800; font-size: 1rem; transition: opacity 0.2s; font-family: inherit;
+  }
+  .db-link:active { opacity: 0.8; }
+  .db-link-call { background: #f1f5f9; color: #1e293b; }
+  .db-link-map  { background: #eff6ff; color: #2563eb; }
+
+  .db-action-btn {
+    width: 100%; padding: 18px; border-radius: 14px;
+    color: white; border: none; font-size: 1.1rem; font-weight: 800; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    font-family: inherit; transition: transform 0.1s, opacity 0.2s; letter-spacing: 0.01em;
+  }
+  .db-action-btn:hover { opacity: 0.92; }
+
+  .db-delivered-badge {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    background: #f0fdf4; color: #16a34a; border-radius: 14px; padding: 16px;
+    font-weight: 800; font-size: 1rem;
+  }
+
+  .db-empty-state {
+    text-align: center; padding: 60px 20px;
+    background: white; border-radius: 24px; border: 2px dashed #e2e8f0;
+  }
+  .db-empty-icon {
+    width: 64px; height: 64px; background: #f1f5f9; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;
+  }
+  .db-empty-title { font-size: 1.1rem; font-weight: 800; color: #334155; margin-bottom: 6px; }
+  .db-empty-sub { font-size: 0.9rem; color: #64748b; }
+
+  /* ── Responsive ── */
+  @media (min-width: 640px) {
+    .db-body { padding: 28px 32px 60px; }
+    .db-header { padding: 20px 32px; }
+    .db-earnings-value { font-size: 2.4rem; }
+    .db-orders-grid { grid-template-columns: 1fr 1fr; }
+    .db-action-links { flex-direction: row; }
+    .db-link { flex: 1; }
+  }
+
+  @media (min-width: 1024px) {
+    .db-header { padding: 20px 40px; }
+    .db-body { padding: 36px 40px 60px; }
+    .db-orders-grid { grid-template-columns: 1fr 1fr; gap: 24px; }
+    .db-earnings-card { padding: 28px 36px; }
+  }
+`;

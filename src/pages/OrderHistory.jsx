@@ -5,8 +5,8 @@ import { ArrowLeft, Package, Clock, ShoppingBag, ChevronDown, ChevronRight } fro
 
 const STATUS_CONFIG = {
   pending:            { bg: '#FEF3C7', color: '#92400E', label: 'Pending' },
-  preparing:          { bg: '#FEE2E2', color: '#991B1B', label: 'Preparing' },
-  'out for delivery': { bg: '#DBEAFE', color: '#1D4ED8', label: 'Out for Delivery' },
+  packed:             { bg: '#DBEAFE', color: '#1E40AF', label: 'Packed' },
+  'out for delivery': { bg: '#E0F2FE', color: '#0369A1', label: 'Out for Delivery' },
   delivered:          { bg: '#DCFCE7', color: '#166534', label: 'Delivered' },
   cancelled:          { bg: '#FEE2E2', color: '#991B1B', label: 'Cancelled' },
 };
@@ -42,6 +42,7 @@ export default function OrderHistory() {
   const allOrders = useAppStore(s => s.orders);
   const addToCart = useAppStore(s => s.addToCart);
   const clearCart = useAppStore(s => s.clearCart);
+  const isStoreOpen = useAppStore(s => s.isStoreOpen);
 
   const [scrolled, setScrolled] = useState(false);
   const [activeFilter, setActiveFilter] = useState('All');
@@ -209,9 +210,9 @@ export default function OrderHistory() {
                     }}>
                       Details {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                     </button>
-                    <button className="press-scale" onClick={() => handleReorder(order)} style={{
-                      height: '32px', padding: '0 14px', background: '#16A34A', color: '#fff', border: 'none',
-                      borderRadius: '10px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', boxShadow: '0 2px 8px rgba(22,163,74,0.2)'
+                    <button className="press-scale" onClick={() => { if(isStoreOpen) handleReorder(order); }} disabled={!isStoreOpen} style={{
+                      height: '32px', padding: '0 14px', background: isStoreOpen ? '#16A34A' : '#9CA3AF', color: '#fff', border: 'none',
+                      borderRadius: '10px', fontSize: '12px', fontWeight: '600', cursor: isStoreOpen ? 'pointer' : 'not-allowed', boxShadow: isStoreOpen ? '0 2px 8px rgba(22,163,74,0.2)' : 'none'
                     }}>
                       Reorder
                     </button>

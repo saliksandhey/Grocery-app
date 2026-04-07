@@ -10,6 +10,7 @@ export default function ProductDetail() {
   const addToCart = useAppStore(state => state.addToCart);
   const updateQty = useAppStore(state => state.updateQty);
   const cart = useAppStore(state => state.cart);
+  const isStoreOpen = useAppStore(state => state.isStoreOpen);
 
   // Accordion states
   const [openSection, setOpenSection] = useState('description');
@@ -247,7 +248,7 @@ export default function ProductDetail() {
           }}>
             <button 
               onClick={() => currentQty > 0 ? updateQty(product.id, -1) : null} 
-              style={{ width: '40px', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', background: currentQty > 0 ? 'var(--surface-2)' : 'transparent', color: currentQty > 0 ? 'var(--text-1)' : 'var(--text-4)' }}
+              style={{ width: '40px', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', background: currentQty > 0 ? 'var(--surface-2)' : 'transparent', color: currentQty > 0 ? 'var(--text-1)' : 'var(--text-4)', cursor: currentQty === 0 ? 'not-allowed' : 'pointer' }}
               disabled={currentQty === 0}
             >
               <Minus size={18} />
@@ -255,8 +256,8 @@ export default function ProductDetail() {
             <span style={{ fontWeight: '800', fontSize: '16px' }}>{currentQty}</span>
             <button 
               onClick={() => addToCart(product)} 
-              style={{ width: '40px', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', background: 'var(--primary-light)', color: 'var(--primary-dark)' }}
-              disabled={stockCount === 0 || currentQty >= stockCount}
+              style={{ width: '40px', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', background: (!isStoreOpen || stockCount === 0 || currentQty >= stockCount) ? 'var(--surface-2)' : 'var(--primary-light)', color: (!isStoreOpen || stockCount === 0 || currentQty >= stockCount) ? 'var(--text-4)' : 'var(--primary-dark)', cursor: (!isStoreOpen || stockCount === 0 || currentQty >= stockCount) ? 'not-allowed' : 'pointer' }}
+              disabled={!isStoreOpen || stockCount === 0 || currentQty >= stockCount}
             >
               <Plus size={18} />
             </button>
@@ -267,12 +268,15 @@ export default function ProductDetail() {
             className="btn btn-primary" 
             style={{ 
               flex: 1, height: '48px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', 
-              fontSize: '16px', fontWeight: 'bold'
+              fontSize: '16px', fontWeight: 'bold',
+              background: !isStoreOpen ? '#9CA3AF' : undefined,
+              cursor: (!isStoreOpen || stockCount === 0) ? 'not-allowed' : 'pointer',
+              border: !isStoreOpen ? 'none' : undefined
             }} 
-            onClick={() => { if (currentQty === 0) addToCart(product); }}
-            disabled={stockCount === 0}
+            onClick={() => { if (isStoreOpen && currentQty === 0) addToCart(product); }}
+            disabled={!isStoreOpen || stockCount === 0}
           >
-            {stockCount === 0 ? 'Out of Stock' : (currentQty > 0 ? 'Added to Cart' : 'Add to Cart')}
+            {!isStoreOpen ? 'Store Closed' : stockCount === 0 ? 'Out of Stock' : (currentQty > 0 ? 'Added to Cart' : 'Add to Cart')}
           </button>
         </div>
       </div>

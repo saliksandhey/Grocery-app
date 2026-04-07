@@ -1,4 +1,4 @@
-﻿import { ArrowLeft, CheckCircle, Package, Truck, Home, Clock } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Package, Truck, Home, Clock } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAppStore } from '../store';
 
@@ -12,16 +12,28 @@ export default function Tracking() {
 
   const stepsList = [
     { status: 'Pending', title: 'Order Placed', icon: <Clock size={24} />, desc: 'Waiting for confirmation.' },
-    { status: 'Accepted', title: 'Order Confirmed', icon: <CheckCircle size={24} />, desc: 'Store accepted your order.' },
-    { status: 'Preparing', title: 'Preparing', icon: <Package size={24} />, desc: 'Your items are being packed.' },
-    { status: 'Ready for Delivery', title: 'Ready', icon: <Package size={24} />, desc: 'Waiting for delivery partner.' },
-    { status: 'Driver Accepted', title: 'Rider Assigned', icon: <Package size={24} />, desc: 'Partner is heading to store.' },
+    { status: 'Packed', title: 'Order Packed', icon: <Package size={24} />, desc: 'Your items are packed.' },
     { status: 'Out for Delivery', title: 'On the Way', icon: <Truck size={24} />, desc: 'Partner is on the way.' },
     { status: 'Delivered', title: 'Delivered', icon: <Home size={24} />, desc: 'Order delivered safely.' },
   ];
 
   const currentStepIndex = stepsList.findIndex(s => s.status === order.status);
   const stepIndex = currentStepIndex === -1 ? 0 : currentStepIndex;
+
+  if (order.status === 'Cancelled') {
+    return (
+      <div style={{ padding: '24px', textAlign: 'center' }}>
+        <button onClick={() => navigate(-1)} style={{ marginBottom: '16px', background:'none', border:'none', fontSize:'1rem', display:'flex', alignItems:'center', gap:'8px', cursor:'pointer' }}>
+          <ArrowLeft size={20} /> Back
+        </button>
+        <div style={{ background: '#FEE2E2', color: '#DC2626', padding: '24px', borderRadius: '12px' }}>
+          <CheckCircle size={48} color="#DC2626" style={{ margin: '0 auto 16px' }} />
+          <h2>Order Cancelled</h2>
+          <p>This order has been cancelled.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

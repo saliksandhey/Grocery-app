@@ -9,6 +9,7 @@ export default function Checkout() {
   const cart = useAppStore(state => state.cart);
   const placeOrder = useAppStore(state => state.placeOrder);
   const currentUser = useAppStore(state => state.currentUser);
+  const isStoreOpen = useAppStore(state => state.isStoreOpen);
 
   const [addresses, setAddresses] = useState([]);
   const [selectedAddr, setSelectedAddr] = useState(null);
@@ -59,7 +60,7 @@ export default function Checkout() {
     ? manualLandmark.trim()
     : addresses.find(a => a.id === selectedAddr)?.landmark || '';
 
-  const canOrder = cart.length > 0 && finalAddress;
+  const canOrder = cart.length > 0 && finalAddress && isStoreOpen;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -89,6 +90,7 @@ export default function Checkout() {
         .press-scale { transition: transform 0.15s ease; cursor: pointer; }
         .press-scale:active { transform: scale(0.95); }
         @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.45} }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
 
       {/* ── HEADER ── */}
@@ -106,6 +108,33 @@ export default function Checkout() {
       </div>
 
       <form onSubmit={handleSubmit} style={{ padding: '12px 16px' }}>
+
+        {/* ── STORE CLOSED BANNER ── */}
+        {!isStoreOpen && (
+          <div style={{ animation: 'slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1)', marginBottom: '12px' }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%)',
+              border: '1.5px solid #FECDD3',
+              borderRadius: '16px',
+              padding: '16px',
+              display: 'flex', alignItems: 'center', gap: '14px',
+              boxShadow: '0 8px 24px rgba(225, 29, 72, 0.08)',
+            }}>
+              <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 10px rgba(225, 29, 72, 0.12)' }}>
+                <span style={{ fontSize: '22px' }}>🕙</span>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '15px', fontWeight: '800', color: '#9F1239', marginBottom: '3px' }}>Store Closed</div>
+                <div style={{ fontSize: '12px', color: '#BE123C', fontWeight: '600' }}>Ordering resumes from 10:00 AM</div>
+              </div>
+              <button type="button" style={{
+                background: '#E11D48', color: '#fff', border: 'none', borderRadius: '10px',
+                padding: '8px 12px', fontSize: '11px', fontWeight: '800', cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(225, 29, 72, 0.25)', flexShrink: 0
+              }}>Notify Me</button>
+            </div>
+          </div>
+        )}
 
         {/* ── DELIVERY ADDRESS ── */}
         <div style={{ background: '#fff', borderRadius: '12px', padding: '16px', marginBottom: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
@@ -257,7 +286,7 @@ export default function Checkout() {
             display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s'
           }}
         >
-          {placing ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Placing...</> : `Place Order`}
+          {placing ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Placing...</> : isStoreOpen ? 'Place Order' : '🔴 Store Closed'}
         </button>
       </div>
     </div>

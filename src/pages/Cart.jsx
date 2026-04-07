@@ -10,6 +10,7 @@ export default function Cart() {
   const updateQty = useAppStore(state => state.updateQty);
   const removeFromCart = useAppStore(state => state.removeFromCart);
   const clearCart = useAppStore(state => state.clearCart);
+  const isStoreOpen = useAppStore(state => state.isStoreOpen);
   
   const [promoCode, setPromoCode] = useState('');
   const [promoStatus, setPromoStatus] = useState(null);
@@ -75,6 +76,7 @@ export default function Cart() {
         .press-scale { transition: transform 0.15s ease; }
         .press-scale:active { transform: scale(0.95); }
         .qty-stepper { transition: all 0.2s ease-out; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
 
       {/* ── HEADER ── */}
@@ -97,6 +99,35 @@ export default function Cart() {
       </div>
 
       <div style={{ padding: '12px 16px' }}>
+
+        {/* ── STORE CLOSED BANNER ── */}
+        {!isStoreOpen && (
+          <div style={{ marginBottom: '16px', animation: 'slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%)',
+              border: '1.5px solid #FECDD3',
+              borderRadius: '16px',
+              padding: '16px',
+              display: 'flex', alignItems: 'center', gap: '14px',
+              boxShadow: '0 8px 24px rgba(225, 29, 72, 0.08)',
+            }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 10px rgba(225, 29, 72, 0.12)' }}>
+                <span style={{ fontSize: '20px' }}>🕙</span>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '15px', fontWeight: '800', color: '#9F1239', marginBottom: '2px' }}>Store Closed</div>
+                <div style={{ fontSize: '12px', color: '#BE123C', fontWeight: '600' }}>We'll be back at 10:00 AM</div>
+              </div>
+              <button style={{
+                background: '#E11D48', color: '#fff', border: 'none', borderRadius: '10px',
+                padding: '8px 12px', fontSize: '11px', fontWeight: '800', cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(225, 29, 72, 0.25)', flexShrink: 0
+              }}>
+                Notify Me
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ── CART ITEMS ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -125,18 +156,18 @@ export default function Cart() {
                       {hasDiscount && <div style={{ fontSize: '12px', color: '#9CA3AF', textDecoration: 'line-through' }}>₹{item.orig_price}</div>}
                     </div>
 
-                    {/* Stepper */}
-                    <div className="qty-stepper" style={{ display: 'flex', alignItems: 'center', background: '#16A34A', borderRadius: '8px', padding: '2px', boxShadow: '0 4px 10px rgba(22, 163, 74, 0.2)' }}>
-                      <button className="press-scale" onClick={() => updateQty(item.id, -1)} style={{ width: '26px', height: '26px', border: 'none', background: 'rgba(255,255,255,0.2)', color: '#fff', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                        <Minus size={16} strokeWidth={2.5} />
-                      </button>
-                      <div style={{ width: '28px', textAlign: 'center', fontSize: '13px', fontWeight: '700', color: '#fff' }}>
-                        {item.qty}
+                      {/* Stepper */}
+                      <div className="qty-stepper" style={{ display: 'flex', alignItems: 'center', background: '#16A34A', borderRadius: '8px', padding: '2px', boxShadow: '0 4px 10px rgba(22, 163, 74, 0.2)' }}>
+                        <button className="press-scale" onClick={() => updateQty(item.id, -1)} style={{ width: '26px', height: '26px', border: 'none', background: 'rgba(255,255,255,0.2)', color: '#fff', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                          <Minus size={16} strokeWidth={2.5} />
+                        </button>
+                        <div style={{ width: '28px', textAlign: 'center', fontSize: '13px', fontWeight: '700', color: '#fff' }}>
+                          {item.qty}
+                        </div>
+                        <button className="press-scale" onClick={() => updateQty(item.id, 1)} disabled={!isStoreOpen} style={{ width: '26px', height: '26px', border: 'none', background: 'rgba(255,255,255,0.2)', color: !isStoreOpen ? 'rgba(255,255,255,0.4)' : '#fff', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: !isStoreOpen ? 'not-allowed' : 'pointer' }}>
+                          <Plus size={16} strokeWidth={2.5} />
+                        </button>
                       </div>
-                      <button className="press-scale" onClick={() => updateQty(item.id, 1)} style={{ width: '26px', height: '26px', border: 'none', background: 'rgba(255,255,255,0.2)', color: '#fff', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                        <Plus size={16} strokeWidth={2.5} />
-                      </button>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -215,6 +246,7 @@ export default function Cart() {
 
         <button 
           className="press-scale"
+          disabled={!isStoreOpen}
           onClick={() => {
             if (!currentUser) {
               navigate('/login', { state: { from: '/checkout' } });
@@ -223,12 +255,20 @@ export default function Cart() {
             }
           }}
           style={{ 
-            height: '48px', background: '#16A34A', color: '#fff', border: 'none', borderRadius: '12px', 
+            height: '48px', 
+            background: isStoreOpen ? '#16A34A' : '#D1D5DB', 
+            color: isStoreOpen ? '#fff' : '#6B7280', 
+            border: 'none', borderRadius: '12px', 
             padding: '0 24px', fontSize: '15px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px',
-            boxShadow: '0 4px 14px rgba(22, 163, 74, 0.3)', cursor: 'pointer'
+            boxShadow: isStoreOpen ? '0 4px 14px rgba(22, 163, 74, 0.3)' : 'none', 
+            cursor: isStoreOpen ? 'pointer' : 'not-allowed'
           }}
         >
-          Proceed to Checkout <ChevronRight size={18} strokeWidth={3} />
+          {isStoreOpen ? (
+            <>Proceed to Checkout <ChevronRight size={18} strokeWidth={3} /></>
+          ) : (
+            'Store Closed'
+          )}
         </button>
       </div>
     </div>

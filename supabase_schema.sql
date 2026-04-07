@@ -166,3 +166,21 @@ USING ( bucket_id = 'category-images' );
 CREATE POLICY "Admin Insert category-images" 
 ON storage.objects FOR INSERT 
 WITH CHECK ( bucket_id = 'category-images' );
+
+-- Create Settings Table
+CREATE TABLE settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- RLS for settings
+ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Enable read access for all" ON settings FOR SELECT USING (true);
+CREATE POLICY "Enable update for all" ON settings FOR ALL USING (true) WITH CHECK (true);
+
+-- realtime
+ALTER PUBLICATION supabase_realtime ADD TABLE settings;
+
+-- Insert default value
+INSERT INTO settings (key, value) VALUES ('store_open', 'true') ON CONFLICT DO NOTHING;

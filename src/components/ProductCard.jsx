@@ -149,6 +149,7 @@ export default function ProductCard({ product }) {
   const addToCart = useAppStore(s => s.addToCart);
   const updateQty = useAppStore(s => s.updateQty);
   const cart = useAppStore(s => s.cart);
+  const isStoreOpen = useAppStore(s => s.isStoreOpen);
 
   const cartItem = cart.find(i => i.id === product.id);
   const imageUrl = product.image_url || product.image || 'https://placehold.co/200x200?text=🛒';
@@ -160,19 +161,35 @@ export default function ProductCard({ product }) {
 
   return (
     <div 
-      style={S.card}
-      onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
-      onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
-      onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+      style={{
+        ...S.card,
+        opacity: isStoreOpen ? 1 : 0.6,
+        pointerEvents: isStoreOpen ? 'auto' : 'none',
+      }}
+      onMouseDown={e => { if(isStoreOpen) e.currentTarget.style.transform = 'scale(0.98)' }}
+      onMouseUp={e => { if(isStoreOpen) e.currentTarget.style.transform = 'scale(1)' }}
+      onMouseLeave={e => { if(isStoreOpen) e.currentTarget.style.transform = 'scale(1)' }}
     >
       <Link to={`/product/${product.id}`} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', flex: 1 }}>
         {/* Image area */}
-        <div style={S.imageWrap}>
+        <div style={{ ...S.imageWrap, position: 'relative' }}>
           {discountPct && <div style={S.badge}>{discountPct}% OFF</div>}
+          
+          {/* STORE CLOSED LABEL */}
+          {!isStoreOpen && (
+            <div style={{
+              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+              background: 'rgba(0, 0, 0, 0.7)', color: '#fff', fontSize: '12px', fontWeight: 'bold',
+              padding: '6px 12px', borderRadius: '20px', zIndex: 10, whiteSpace: 'nowrap'
+            }}>
+              Store Closed
+            </div>
+          )}
+
           <img
             src={imageUrl}
             alt={product.name}
-            style={S.image}
+            style={{ ...S.image, filter: !isStoreOpen ? 'grayscale(100%)' : 'none' }}
             loading="lazy"
             onError={e => { e.target.src = 'https://placehold.co/200x200?text=🛒'; }}
           />
@@ -193,7 +210,11 @@ export default function ProductCard({ product }) {
       </Link>
 
       {/* Add / Qty Stepper (positioned bottom right) */}
-      {cartItem ? (
+      {!isStoreOpen ? (
+        <div style={{...S.addBtn, background: '#9CA3AF', cursor: 'not-allowed', boxShadow: 'none'}}>
+          <Plus size={18} strokeWidth={3} />
+        </div>
+      ) : cartItem ? (
         <div style={S.stepper}>
           <button
             style={S.stepBtn}

@@ -15,6 +15,7 @@ export const useAppStore = create(
     (set, get) => ({
       cart: [],
       addToCart: (product) => set((state) => {
+        if (!state.isStoreOpen) return state; // Enforce Store Closed rule
         const existing = state.cart.find(item => item.id === product.id);
         if (existing) {
           return { cart: state.cart.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item) };
@@ -23,6 +24,7 @@ export const useAppStore = create(
       }),
       removeFromCart: (id) => set((state) => ({ cart: state.cart.filter(item => item.id !== id) })),
       updateQty: (id, change) => set((state) => {
+        if (!state.isStoreOpen && change > 0) return state; // Block increasing cart qty if closed
         const newCart = state.cart.map(item => {
           if (item.id === id) {
             return { ...item, qty: item.qty + change };
@@ -45,6 +47,7 @@ export const useAppStore = create(
       setDbCategories: (dbCategories) => set({ dbCategories }),
       
       placeOrder: async (orderData) => {
+        if (!get().isStoreOpen) return null; // Enforce Store Closed rule globally
         // 1. Insert Order
         const { error: orderError, data: order } = await supabase.from('orders').insert({
           customer_details: orderData.customer,
@@ -78,11 +81,56 @@ export const useAppStore = create(
         return null;
       },
       
-      updateOrderStatus: async (orderId, newStatus) => {
+      updateOrderStatus: async (orderId, newStatus, role = 'admin') => {
+        // Allowed forward-only transition chain
+        const CHAIN = [
+          'Pending', 'Packed', 'Out for Delivery', 'Delivered'
+        ];
+        const TERMINAL = ['Delivered', 'Cancelled'];
+
+        const currentOrder = get().orders.find(o => o.id === orderId);
+        if (!currentOrder) return { error: 'Order not found' };
+        
+        const currentStatus = currentOrder.status;
+
+        // Guard: terminal states are immutable
+        if (TERMINAL.includes(currentStatus)) {
+          return { error: `Order is already "${currentStatus}" and cannot be changed.` };
+        }
+
+        // Role-based validations
+        const isAssigned = !!currentOrder.delivery_boy_id;
+        if (role === 'admin' && isAssigned && newStatus !== 'Cancelled') {
+          return { error: 'Admin cannot update status after assigning a delivery partner.' };
+        }
+        if (role === 'delivery' && !isAssigned) {
+          return { error: 'Order must be assigned before updating status.' };
+        }
+
+        // Guard: Cancelled can only be set from Pending
+        if (newStatus === 'Cancelled' && currentStatus !== 'Pending') {
+          return { error: 'Only Pending orders can be cancelled.' };
+        }
+
+        // Guard: enforce forward-only chain (non-cancel transitions)
+        if (newStatus !== 'Cancelled') {
+          const fromIdx = CHAIN.indexOf(currentStatus);
+          const toIdx   = CHAIN.indexOf(newStatus);
+          if (toIdx === -1) {
+            return { error: `Unknown status: "${newStatus}"` };
+          }
+          if (toIdx !== fromIdx + 1) {
+            return { error: `Cannot move from "${currentStatus}" to "${newStatus}". Follow the correct order.` };
+          }
+        }
+
+        // Valid transition — update state + DB
         set(state => ({
           orders: state.orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o)
         }));
-        await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
+        const { error } = await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
+        if (error) return { error: error.message };
+        return { error: null };
       },
       
       assignDeliveryBoy: async (orderId, dbId) => {
@@ -147,6 +195,17 @@ export const useAppStore = create(
       deleteCategory: async (id) => {
         const { error } = await supabase.from('categories').delete().eq('id', id);
         if (!error) set(state => ({ dbCategories: state.dbCategories.filter(c => c.id !== id) }));
+      },
+
+      // ── Store Open/Close ──
+      isStoreOpen: true,
+      setStoreOpen: async (open) => {
+        set({ isStoreOpen: open });
+        await supabase.from('settings').upsert({ key: 'store_open', value: open ? 'true' : 'false' }, { onConflict: 'key' });
+      },
+      fetchStoreStatus: async () => {
+        const { data } = await supabase.from('settings').select('value').eq('key', 'store_open').single();
+        if (data) set({ isStoreOpen: data.value === 'true' });
       },
 
       currentDeliveryBoy: null,
@@ -223,6 +282,7 @@ export const connectSupabase = async () => {
     if (orders) useAppStore.getState().setOrders(orders);
   };
   await fetchOrders();
+  await useAppStore.getState().fetchStoreStatus();
 
   supabase.channel('custom-all-channel')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
@@ -231,6 +291,9 @@ export const connectSupabase = async () => {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, async () => {
       const { data: updatedProducts } = await supabase.from('products').select('*').order('created_at', { ascending: false });
       if (updatedProducts) useAppStore.getState().setProducts(updatedProducts);
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, async () => {
+      await useAppStore.getState().fetchStoreStatus();
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, async () => {
       const { data: updatedCats } = await supabase.from('categories').select('*').order('created_at', { ascending: false });

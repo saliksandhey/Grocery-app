@@ -99,6 +99,7 @@ export default function Home() {
   const products = useAppStore(s => s.products);
   const dbCategories = useAppStore(s => s.dbCategories);
   const cart = useAppStore(s => s.cart);
+  const isStoreOpen = useAppStore(s => s.isStoreOpen);
   const isLoading = products.length === 0;
 
   const cartCount = cart.reduce((sum, i) => sum + i.qty, 0);
@@ -151,6 +152,7 @@ export default function Home() {
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
         @keyframes floating { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
         @keyframes bannerLoad { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         .hide-scroll::-webkit-scrollbar { display: none; }
         .hide-scroll { scrollbar-width: none; }
         .press-scale { transition: transform 0.15s ease; }
@@ -215,6 +217,45 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* ── STORE CLOSED BANNER ── */}
+      {!isStoreOpen && (
+        <div style={{ padding: '16px 16px 0', animation: 'slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%)',
+            border: '1.5px solid #FECDD3',
+            borderRadius: '16px',
+            padding: '16px',
+            display: 'flex', alignItems: 'center', gap: '14px',
+            boxShadow: '0 8px 24px rgba(225, 29, 72, 0.08)',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 10px rgba(225, 29, 72, 0.12)' }}>
+               <Clock size={22} color="#E11D48" strokeWidth={2.5} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '16px', fontWeight: '800', color: '#9F1239', marginBottom: '2px', fontFamily: "'Inter', sans-serif" }}>Store Closed</div>
+              <div style={{ fontSize: '13px', color: '#BE123C', fontWeight: '600' }}>We'll be back at 10:00 AM</div>
+            </div>
+            <button style={{
+              background: '#E11D48', color: '#fff', border: 'none', borderRadius: '10px', padding: '8px 14px', fontSize: '12px', fontWeight: '800', cursor: 'pointer', boxShadow: '0 4px 12px rgba(225, 29, 72, 0.25)', transition: 'transform 0.15s ease'
+            }} onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'} onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}>
+              Notify Me
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── STORE CLOSED GLOBAL OVERLAY ── */}
+      {!isStoreOpen && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(243, 244, 246, 0.25)',
+          pointerEvents: 'none',
+          zIndex: 40
+        }} />
+      )}
 
       {/* ═══════ CONTENT ═══════ */}
       {!searchQuery && !activeCat ? (
