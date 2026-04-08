@@ -47,46 +47,85 @@ export const useAppStore = create(
       setDbCategories: (dbCategories) => set({ dbCategories }),
       
       placeOrder: async (orderData) => {
-        if (!get().isStoreOpen) return null; // Enforce Store Closed rule globally
+        console.log('placeOrder called with:', orderData);
+        
+        if (!get().isStoreOpen) {
+          console.error('Store is closed, cannot place order');
+          return null;
+        }
+        
         // 1. Insert Order
         const { error: orderError, data: order } = await supabase.from('orders').insert({
           customer_details: orderData.customer,
-          status: 'Pending',
+          status: 'PLACED',
           item_total: orderData.summary.itemTotal,
           delivery_charge: orderData.summary.deliveryCharge,
           grand_total: orderData.summary.grandTotal,
-          payment_method: orderData.paymentMethod
+          payment_method: orderData.paymentMethod,
+          payment_status: orderData.paymentMethod === 'cod' ? 'PENDING' : 'PENDING',
+          placed_at: new Date().toISOString()
         }).select().single();
         
-        if (!orderError && order) {
-           // 2. Insert Items
-           const itemsToInsert = orderData.items.map(item => ({
-              order_id: order.id,
-              product_id: item.id,
-              quantity: item.qty,
-              price: item.price
-           }));
-           await supabase.from('order_items').insert(itemsToInsert);
-
-           get().clearCart();
-           
-           // Mock it immediately for UI. A full refresh will give the relational data!
-           const newOrderForState = {
-             ...order,
-             order_items: orderData.items.map(i => ({ quantity: i.qty, product: { name: i.name, image_url: i.image_url || i.image } }))
-           };
-           set(state => ({ orders: [newOrderForState, ...state.orders] }));
-           return newOrderForState;
+        if (orderError) {
+          console.error('Error creating order:', orderError);
+          alert('Failed to create order: ' + orderError.message);
+          return null;
         }
-        return null;
+        
+        if (!order) {
+          console.error('No order data returned from database');
+          alert('Failed to create order');
+          return null;
+        }
+        
+        console.log('Order created successfully:', order.id);
+        
+        // 2. Insert Items with product name and image for reliable display
+        const itemsToInsert = orderData.items.map(item => ({
+          order_id: order.id,
+          product_id: item.id,
+          product_name: item.name,
+          quantity: item.qty,
+          price: item.price,
+          image_url: item.image_url || item.image || ''
+        }));
+        
+        console.log('Inserting order items:', itemsToInsert);
+        
+        const { error: itemsError, data: insertedItems } = await supabase.from('order_items').insert(itemsToInsert).select();
+        
+        if (itemsError) {
+          console.error('❌ Error creating order items:', itemsError);
+          console.error('Items error details:', JSON.stringify(itemsError, null, 2));
+          alert('Order created but failed to save items: ' + itemsError.message);
+          // Continue anyway - order is already created
+        } else {
+          console.log('✅ Order items inserted successfully:', insertedItems);
+        }
+
+        get().clearCart();
+        
+        // Mock it immediately for UI with items attached
+        const newOrderForState = {
+          ...order,
+          order_items: orderData.items.map(i => ({ 
+            product_name: i.name, 
+            image_url: i.image_url || i.image || '',
+            quantity: i.qty,
+            price: i.price
+          }))
+        };
+        set(state => ({ orders: [newOrderForState, ...state.orders] }));
+        console.log('Order added to state');
+        return newOrderForState;
       },
       
       updateOrderStatus: async (orderId, newStatus, role = 'admin') => {
-        // Allowed forward-only transition chain
+        // Strict forward-only transition chain
         const CHAIN = [
-          'Pending', 'Packed', 'Out for Delivery', 'Delivered'
+          'PLACED', 'CONFIRMED', 'PACKED', 'ASSIGNED', 'OUT_FOR_DELIVERY', 'DELIVERED'
         ];
-        const TERMINAL = ['Delivered', 'Cancelled'];
+        const TERMINAL = ['DELIVERED', 'CANCELLED'];
 
         const currentOrder = get().orders.find(o => o.id === orderId);
         if (!currentOrder) return { error: 'Order not found' };
@@ -98,22 +137,25 @@ export const useAppStore = create(
           return { error: `Order is already "${currentStatus}" and cannot be changed.` };
         }
 
+        // Guard: Cancellation ONLY allowed from PLACED status
+        if (newStatus === 'CANCELLED' && currentStatus !== 'PLACED') {
+          return { error: 'Order can only be cancelled at PLACED stage.' };
+        }
+
         // Role-based validations
         const isAssigned = !!currentOrder.delivery_boy_id;
-        if (role === 'admin' && isAssigned && newStatus !== 'Cancelled') {
-          return { error: 'Admin cannot update status after assigning a delivery partner.' };
+        
+        // Admin cannot update after PACKED stage (assignment happens at PACKED)
+        if (role === 'admin' && ['ASSIGNED', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(currentStatus)) {
+          return { error: 'Cannot update order after assigning delivery partner.' };
         }
+        
         if (role === 'delivery' && !isAssigned) {
           return { error: 'Order must be assigned before updating status.' };
         }
 
-        // Guard: Cancelled can only be set from Pending
-        if (newStatus === 'Cancelled' && currentStatus !== 'Pending') {
-          return { error: 'Only Pending orders can be cancelled.' };
-        }
-
         // Guard: enforce forward-only chain (non-cancel transitions)
-        if (newStatus !== 'Cancelled') {
+        if (newStatus !== 'CANCELLED') {
           const fromIdx = CHAIN.indexOf(currentStatus);
           const toIdx   = CHAIN.indexOf(newStatus);
           if (toIdx === -1) {
@@ -124,20 +166,36 @@ export const useAppStore = create(
           }
         }
 
+        // Auto-handle timestamps
+        const timestampUpdates = {};
+        if (newStatus === 'CONFIRMED') timestampUpdates.confirmed_at = new Date().toISOString();
+        if (newStatus === 'PACKED') timestampUpdates.packed_at = new Date().toISOString();
+        if (newStatus === 'ASSIGNED') timestampUpdates.assigned_at = new Date().toISOString();
+        if (newStatus === 'OUT_FOR_DELIVERY') timestampUpdates.out_for_delivery_at = new Date().toISOString();
+        if (newStatus === 'DELIVERED') timestampUpdates.delivered_at = new Date().toISOString();
+        if (newStatus === 'CANCELLED') timestampUpdates.cancelled_at = new Date().toISOString();
+
         // Valid transition — update state + DB
         set(state => ({
           orders: state.orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o)
         }));
-        const { error } = await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
+        const { error } = await supabase
+          .from('orders')
+          .update({ status: newStatus, ...timestampUpdates })
+          .eq('id', orderId);
         if (error) return { error: error.message };
         return { error: null };
       },
       
       assignDeliveryBoy: async (orderId, dbId) => {
         set(state => ({
-          orders: state.orders.map(o => o.id === orderId ? { ...o, delivery_boy_id: dbId } : o)
+          orders: state.orders.map(o => o.id === orderId ? { ...o, delivery_boy_id: dbId, status: 'ASSIGNED' } : o)
         }));
-        await supabase.from('orders').update({ delivery_boy_id: dbId }).eq('id', orderId);
+        await supabase.from('orders').update({ 
+          delivery_boy_id: dbId, 
+          status: 'ASSIGNED',
+          assigned_at: new Date().toISOString()
+        }).eq('id', orderId);
       },
       
       addDeliveryBoy: async (db) => {
@@ -276,16 +334,55 @@ export const connectSupabase = async () => {
 
   // Deep fetch using Supabase relations
   const fetchOrders = async () => {
-    const { data: orders } = await supabase.from('orders')
-      .select('*, order_items(quantity, price, product:products(name, image_url))')
-      .order('created_at', { ascending: false });
-    if (orders) useAppStore.getState().setOrders(orders);
+    try {
+      // First, fetch all orders
+      const { data: orders, error: ordersError } = await supabase.from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (ordersError) {
+        console.error('Error fetching orders:', ordersError);
+        return;
+      }
+
+      if (!orders || orders.length === 0) {
+        useAppStore.getState().setOrders([]);
+        return;
+      }
+
+      // Then fetch all order_items for these orders
+      const orderIds = orders.map(o => o.id);
+      const { data: items, error: itemsError } = await supabase
+        .from('order_items')
+        .select('*')
+        .in('order_id', orderIds);
+
+      if (itemsError) {
+        console.error('Error fetching order items:', itemsError);
+        // Still set orders even if items fetch fails
+        useAppStore.getState().setOrders(orders);
+        return;
+      }
+
+      // Attach order_items to each order
+      const ordersWithItems = orders.map(order => ({
+        ...order,
+        order_items: (items || []).filter(item => item.order_id === order.id)
+      }));
+
+      useAppStore.getState().setOrders(ordersWithItems);
+    } catch (err) {
+      console.error('Failed to fetch orders:', err);
+    }
   };
   await fetchOrders();
   await useAppStore.getState().fetchStoreStatus();
+  
+  console.log('Supabase connected, realtime listeners active');
 
   supabase.channel('custom-all-channel')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+      console.log('Orders changed, refreshing...');
       fetchOrders();
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, async () => {

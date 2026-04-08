@@ -50,12 +50,20 @@ CREATE TABLE products (
 CREATE TABLE orders (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     customer_details JSONB NOT NULL,
-    status TEXT DEFAULT 'Pending', -- 'Pending', 'Assigned', 'In Transit', 'Delivered', 'Cancelled'
+    status TEXT DEFAULT 'PLACED', -- 'PLACED', 'CONFIRMED', 'PACKED', 'ASSIGNED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'
     item_total NUMERIC DEFAULT 0,
     delivery_charge NUMERIC DEFAULT 0,
     grand_total NUMERIC DEFAULT 0,
     payment_method TEXT,
+    payment_status TEXT DEFAULT 'PENDING', -- 'PENDING', 'PAID', 'REFUNDED'
     delivery_boy_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+    placed_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    confirmed_at TIMESTAMP WITH TIME ZONE,
+    packed_at TIMESTAMP WITH TIME ZONE,
+    assigned_at TIMESTAMP WITH TIME ZONE,
+    out_for_delivery_at TIMESTAMP WITH TIME ZONE,
+    delivered_at TIMESTAMP WITH TIME ZONE,
+    cancelled_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -64,6 +72,8 @@ CREATE TABLE order_items (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
     product_id UUID REFERENCES products(id) ON DELETE CASCADE,
+    product_name TEXT,
+    image_url TEXT,
     quantity INTEGER NOT NULL DEFAULT 1,
     price NUMERIC NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -181,6 +191,26 @@ CREATE POLICY "Enable update for all" ON settings FOR ALL USING (true) WITH CHEC
 
 -- realtime
 ALTER PUBLICATION supabase_realtime ADD TABLE settings;
+ALTER PUBLICATION supabase_realtime ADD TABLE order_items;
 
 -- Insert default value
 INSERT INTO settings (key, value) VALUES ('store_open', 'true') ON CONFLICT DO NOTHING;
+
+-- Create Delivery Earnings Table
+CREATE TABLE delivery_earnings (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    delivery_boy_id UUID REFERENCES profiles(id),
+    order_id UUID REFERENCES orders(id),
+    amount NUMERIC DEFAULT 0,
+    status TEXT DEFAULT 'PENDING',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- RLS for delivery_earnings
+ALTER TABLE delivery_earnings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Enable read access for all" ON delivery_earnings FOR SELECT USING (true);
+CREATE POLICY "Enable insert for all" ON delivery_earnings FOR INSERT WITH CHECK (true);
+CREATE POLICY "Enable update for all" ON delivery_earnings FOR UPDATE USING (true);
+
+-- realtime for delivery_earnings
+ALTER PUBLICATION supabase_realtime ADD TABLE delivery_earnings;

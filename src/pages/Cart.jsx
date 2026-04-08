@@ -185,7 +185,7 @@ export default function Cart() {
                 placeholder="PROMO CODE (e.g. WELCOME50)"
                 value={promoCode}
                 onChange={e => setPromoCode(e.target.value.toUpperCase())}
-                style={{ border: 'none', outline: 'none', background: 'transparent', flex: 1, fontSize: '13px', fontWeight: '600', color: '#111827', textTransform: 'uppercase' }}
+                style={{ border: 'none', outline: 'none', background: 'transparent', flex: 1, fontSize: '13px', fontWeight: '600', color: '#111827', textTransform: 'uppercase', userSelect: 'text', WebkitUserSelect: 'text' }}
               />
             </div>
             <button className="press-scale" onClick={handleApplyPromo} style={{ background: '#16A34A', color: '#fff', border: 'none', borderRadius: '10px', padding: '0 16px', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}>

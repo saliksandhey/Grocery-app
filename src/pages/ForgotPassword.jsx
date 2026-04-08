@@ -101,6 +101,7 @@ export default function ForgotPassword() {
           width: 100%; height: 50px; border-radius: 14px; border: 2px solid transparent;
           padding: 12px 16px 12px 42px; font-size: 14px; font-family: Inter, sans-serif;
           color: #111827; background: #F3F4F6; box-sizing: border-box; transition: all 0.2s ease; outline: none; font-weight: 500;
+          user-select: text; -webkit-user-select: text;
         }
         .fp-input::placeholder { color: #9CA3AF; font-weight: 400; }
         .fp-input:focus { border-color: #16A34A; background: #fff; box-shadow: 0 0 0 3px rgba(22,163,74,0.1); }

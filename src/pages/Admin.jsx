@@ -8,13 +8,15 @@ import {
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
-/* â”€â”€â”€ constants â”€â”€â”€ */
+/* â"€â"€â"€ constants â"€â"€â"€ */
 const statusMeta = {
-  Pending:            { bg: '#FEF3C7', color: '#D97706', dot: '#D97706' },
-  Packed:             { bg: '#E0E7FF', color: '#4F46E5', dot: '#4F46E5' },
-  'Out for Delivery': { bg: '#FFEDD5', color: '#EA580C', dot: '#EA580C' },
-  Delivered:          { bg: '#D1FAE5', color: '#059669', dot: '#059669' },
-  Cancelled:          { bg: '#FEE2E2', color: '#DC2626', dot: '#DC2626' },
+  PLACED:            { bg: '#FEF3C7', color: '#D97706', dot: '#F59E0B', label: 'Pending' },
+  CONFIRMED:         { bg: '#DBEAFE', color: '#2563EB', dot: '#3B82F6', label: 'Confirmed' },
+  PACKED:            { bg: '#E9D5FF', color: '#7C3AED', dot: '#A855F7', label: 'Packed' },
+  ASSIGNED:          { bg: '#CCFBF1', color: '#0D9488', dot: '#14B8A6', label: 'Assigned' },
+  OUT_FOR_DELIVERY:  { bg: '#FFEDD5', color: '#EA580C', dot: '#F97316', label: 'Out for Delivery' },
+  DELIVERED:         { bg: '#D1FAE5', color: '#059669', dot: '#22C55E', label: 'Delivered' },
+  CANCELLED:         { bg: '#FEE2E2', color: '#DC2626', dot: '#EF4444', label: 'Cancelled' },
 };
 
 const NAV = [
@@ -302,7 +304,7 @@ export default function Admin() {
     const assignedRider = deliveryBoys.find(d => d.id === order.delivery_boy_id);
     const [localStatus, setLocalStatus] = useState(order.status);
     const [assigning, setAssigning] = useState(false);
-    const isTerminal = localStatus === 'Delivered' || localStatus === 'Cancelled';
+    const isTerminal = localStatus === 'DELIVERED' || localStatus === 'CANCELLED';
 
     const handleStatusChange = async (newStatus) => {
       const res = await updateOrderStatus(order.id, newStatus, 'admin');
@@ -323,15 +325,17 @@ export default function Admin() {
       setAssigning(false);
     };
 
-    const statusMeta = {
-      'Pending': { bg:'#FEF3C7', color:'#92400E', dot:'#F59E0B' },
-      'Packed': { bg:'#DBEAFE', color:'#1E40AF', dot:'#3B82F6' },
-      'Out for Delivery': { bg:'#E0F2FE', color:'#0369A1', dot:'#0EA5E9' },
-      'Delivered': { bg:'#DCFCE7', color:'#166534', dot:'#22C55E' },
-      'Cancelled': { bg:'#FEE2E2', color:'#991B1B', dot:'#EF4444' }
+    const statusDetailMeta = {
+      'PLACED': { bg:'#FEF3C7', color:'#92400E', dot:'#F59E0B' },
+      'CONFIRMED': { bg:'#DBEAFE', color:'#1E40AF', dot:'#3B82F6' },
+      'PACKED': { bg:'#E9D5FF', color:'#6B21A8', dot:'#A855F7' },
+      'ASSIGNED': { bg:'#CCFBF1', color:'#115E59', dot:'#14B8A6' },
+      'OUT_FOR_DELIVERY': { bg:'#FFEDD5', color:'#9A3412', dot:'#F97316' },
+      'DELIVERED': { bg:'#DCFCE7', color:'#166534', dot:'#22C55E' },
+      'CANCELLED': { bg:'#FEE2E2', color:'#991B1B', dot:'#EF4444' }
     };
 
-    const sm = statusMeta[localStatus] || { bg:'#F1F5F9', color:'#64748B', dot:'#94A3B8' };
+    const sm = statusDetailMeta[localStatus] || { bg:'#F1F5F9', color:'#64748B', dot:'#94A3B8' };
 
     return (
       <div
@@ -391,9 +395,9 @@ export default function Admin() {
                   <div style={{ padding:'24px', textAlign:'center', color:'#9CA3AF', fontSize:'0.875rem' }}>No item details available</div>
                 )}
                 {items.map((item, idx) => {
-                  const name  = item.product?.name || 'Unknown Product';
-                  const img   = item.product?.image_url || '';
-                  const price = item.price || item.product?.price || 0;
+                  const name  = item.product_name || item.product?.name || 'Unknown Product';
+                  const img   = item.image_url || item.product?.image_url || '';
+                  const price = item.price || 0;
                   const qty   = item.quantity || 1;
                   const total = price * qty;
                   return (
@@ -460,18 +464,21 @@ export default function Admin() {
 
                   {/* Quick action buttons */}
                   <div style={{ display:'flex', flexWrap:'wrap', gap:'8px' }}>
-                    {localStatus === 'Pending' && (
-                      <button onClick={() => handleStatusChange('Packed')} style={{ flex:'1 1 auto', padding:'10px 16px', background:'#10B981', color:'white', border:'none', borderRadius:'8px', fontWeight:700, cursor:'pointer', fontSize:'0.875rem' }}>✓ Pack Order</button>
+                    {localStatus === 'PLACED' && (
+                      <button onClick={() => handleStatusChange('CONFIRMED')} style={{ flex:'1 1 auto', padding:'10px 16px', background:'#10B981', color:'white', border:'none', borderRadius:'8px', fontWeight:700, cursor:'pointer', fontSize:'0.875rem' }}>✓ Accept Order</button>
                     )}
-                    {localStatus === 'Pending' && (
-                      <button onClick={() => handleStatusChange('Cancelled')} style={{ flex:'1 1 auto', padding:'10px 16px', background:'#FEE2E2', color:'#DC2626', border:'none', borderRadius:'8px', fontWeight:700, cursor:'pointer', fontSize:'0.875rem' }}>✕ Cancel</button>
+                    {localStatus === 'PLACED' && (
+                      <button onClick={() => handleStatusChange('CANCELLED')} style={{ flex:'1 1 auto', padding:'10px 16px', background:'#FEE2E2', color:'#DC2626', border:'none', borderRadius:'8px', fontWeight:700, cursor:'pointer', fontSize:'0.875rem' }}>✕ Cancel</button>
+                    )}
+                    {localStatus === 'CONFIRMED' && (
+                      <button onClick={() => handleStatusChange('PACKED')} style={{ flex:'1 1 auto', padding:'10px 16px', background:'#7C3AED', color:'white', border:'none', borderRadius:'8px', fontWeight:700, cursor:'pointer', fontSize:'0.875rem' }}>📦 Mark as Packed</button>
                     )}
                   </div>
                 </>
               )}
 
               {/* Assign rider */}
-              {!assignedRider && localStatus === 'Packed' && (
+              {!assignedRider && localStatus === 'PACKED' && (
                 <div style={{ marginTop:'14px', paddingTop:'14px', borderTop:'1px solid #E5E7EB' }}>
                   <div style={{ fontSize:'0.8rem', fontWeight:600, color:'#374151', marginBottom:'8px', display:'flex', alignItems:'center', gap:'6px' }}>
                     <Truck size={14} /> Assign Delivery Boy

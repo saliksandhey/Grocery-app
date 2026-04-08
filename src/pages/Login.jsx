@@ -60,7 +60,7 @@ export default function Login() {
           width: 100%; height: 50px; border-radius: 14px; border: 2px solid transparent;
           padding: 12px 16px 12px 42px; font-size: 14px; font-family: Inter, sans-serif;
           color: #111827; background: #F3F4F6; box-sizing: border-box; transition: all 0.2s ease;
-          outline: none; font-weight: 500;
+          outline: none; font-weight: 500; user-select: text; -webkit-user-select: text;
         }
         .input-field::placeholder { color: #9CA3AF; font-weight: 400; }
         .input-field:focus {

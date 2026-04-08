@@ -206,7 +206,7 @@ export default function Home() {
           }}>
             <Search size={18} color="#9ca3af" />
             <input
-              style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: '14px', color: '#111827', fontWeight: '500' }}
+              style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: '14px', color: '#111827', fontWeight: '500', userSelect: 'text', WebkitUserSelect: 'text' }}
               placeholder="Search for fruits, vegetables, groceries..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}

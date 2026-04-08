@@ -173,6 +173,7 @@ function AddressForm({ onClose, onSaved, editAddress }) {
             <input value={landmark} onChange={e => setLandmark(e.target.value)} placeholder="Near school, temple, etc." style={{
               width: '100%', height: '48px', padding: '0 12px', borderRadius: '12px', border: '1.5px solid #E5E7EB', fontSize: '14px',
               fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box', background: '#F9FAFB',
+              userSelect: 'text', WebkitUserSelect: 'text',
             }} />
           </div>
 

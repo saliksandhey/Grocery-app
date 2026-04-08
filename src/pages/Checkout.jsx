@@ -64,7 +64,18 @@ export default function Checkout() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!canOrder) return;
+    if (!canOrder) {
+      if (!isStoreOpen) {
+        alert('Store is currently closed. Please order between 10:00 AM - 10:00 PM');
+      } else if (cart.length === 0) {
+        alert('Your cart is empty');
+      } else if (!finalAddress) {
+        alert('Please select or enter a delivery address');
+      }
+      return;
+    }
+    
+    console.log('Submitting order...');
     setPlacing(true);
 
     const orderData = {
@@ -79,9 +90,26 @@ export default function Checkout() {
       paymentMethod: payment,
     };
 
-    await placeOrder(orderData);
-    setPlacing(false);
-    navigate('/success');
+    console.log('Order data:', orderData);
+
+    try {
+      const result = await placeOrder(orderData);
+      console.log('placeOrder result:', result);
+      
+      if (result) {
+        setPlacing(false);
+        console.log('Order placed successfully, navigating to success');
+        navigate('/success');
+      } else {
+        setPlacing(false);
+        console.error('Order placement failed - result was null');
+        alert('Failed to place order. Please check console for details and try again.');
+      }
+    } catch (error) {
+      console.error('Exception during order placement:', error);
+      setPlacing(false);
+      alert('An error occurred while placing your order: ' + error.message);
+    }
   };
 
   return (
@@ -210,6 +238,7 @@ export default function Checkout() {
               <input value={manualLandmark} onChange={e => setManualLandmark(e.target.value)} placeholder="Landmark (optional)" style={{
                 width: '100%', height: '44px', padding: '0 10px', borderRadius: '10px', border: '1.5px solid #E5E7EB', fontSize: '13px',
                 fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box', background: '#F9FAFB',
+                userSelect: 'text', WebkitUserSelect: 'text',
               }} />
               {addresses.length > 0 && (
                 <button type="button" onClick={() => setShowManual(false)} style={{

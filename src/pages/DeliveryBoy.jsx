@@ -9,20 +9,21 @@ import {
 
 /* ─── status pipeline ─── */
 const statusMeta = {
-  'Packed':           { label: 'Packed',     bg: '#fee2e2', color: '#ef4444' },
-  'Out for Delivery': { label: 'On Route',   bg: '#dbeafe', color: '#3b82f6' },
-  'Delivered':        { label: 'Delivered',  bg: '#dcfce7', color: '#16a34a' },
+  'ASSIGNED':          { label: 'Assigned',   bg: '#E0E7FF', color: '#4F46E5' },
+  'OUT_FOR_DELIVERY':  { label: 'On Route',   bg: '#FFEDD5', color: '#EA580C' },
+  'DELIVERED':         { label: 'Delivered',  bg: '#D1FAE5', color: '#16A34A' },
 };
 
 const STEPS = [
-  { status: 'Packed',           label: 'Picked Up',      next: 'Out for Delivery', bg: '#f59e0b' },
-  { status: 'Out for Delivery', label: 'Delivered',      next: 'Delivered',        bg: '#22c55e' },
+  { status: 'ASSIGNED',         label: 'Start Delivery',  next: 'OUT_FOR_DELIVERY', bg: '#3B82F6' },
+  { status: 'OUT_FOR_DELIVERY', label: 'Mark Delivered',  next: 'DELIVERED',        bg: '#22C55E' },
 ];
 
 /* ─── order card ─── */
 const OrderCard = ({ order, onUpdateStatus }) => {
   const meta = statusMeta[order.status] || { label: order.status, bg: '#f1f5f9', color: '#64748b' };
   const step = STEPS.find(s => s.status === order.status);
+  const items = order.order_items || [];
 
   return (
     <div className="db-card">
@@ -48,6 +49,21 @@ const OrderCard = ({ order, onUpdateStatus }) => {
         </div>
       </div>
 
+      {/* Items to deliver */}
+      {items.length > 0 && (
+        <div className="db-items-block">
+          <div className="db-items-title">Items ({items.length})</div>
+          {items.map((item, idx) => (
+            <div key={item.id || idx} className="db-item-row">
+              <div className="db-item-info">
+                <div className="db-item-name">{item.product_name || 'Item'}</div>
+                <div className="db-item-qty">Qty: {item.quantity}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Amount */}
       <div className="db-amount-row">
         <span className="db-amount-label">Amount to Collect</span>
@@ -69,7 +85,7 @@ const OrderCard = ({ order, onUpdateStatus }) => {
       </div>
 
       {/* Status action button */}
-      {step && order.status !== 'Delivered' && (
+      {step && order.status !== 'DELIVERED' && (
         <button
           className="db-action-btn"
           style={{ background: step.bg }}
@@ -82,7 +98,7 @@ const OrderCard = ({ order, onUpdateStatus }) => {
         </button>
       )}
 
-      {order.status === 'Delivered' && (
+      {order.status === 'DELIVERED' && (
         <div className="db-delivered-badge">
           <CheckCircle2 size={20} /> Delivered Successfully 🎉
         </div>
@@ -175,9 +191,9 @@ export default function DeliveryBoy() {
 
   /* ─── Dashboard ─── */
   const myOrders     = orders.filter(o => o.delivery_boy_id === currentDeliveryBoy.id);
-  const activeOrders = myOrders.filter(o => o.status !== 'Delivered');
-  const doneOrders   = myOrders.filter(o => o.status === 'Delivered');
-  const todayEarnings = doneOrders.reduce((acc, o) => acc + (o.grand_total || 0), 0);
+  const activeOrders = myOrders.filter(o => ['ASSIGNED', 'OUT_FOR_DELIVERY'].includes(o.status));
+  const doneOrders   = myOrders.filter(o => o.status === 'DELIVERED');
+  const todayEarnings = doneOrders.length; // Count of delivered orders
 
   return (
     <div className="db-root">
@@ -285,6 +301,7 @@ const CSS = `
     background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 14px;
     font-size: 1rem; font-weight: 600; color: #1e293b; outline: none;
     font-family: inherit; box-sizing: border-box; transition: border-color 0.2s;
+    user-select: text; -webkit-user-select: text;
   }
   .db-input:focus { border-color: #10b981; }
   .db-input-pass { padding-right: 48px; }
@@ -375,6 +392,19 @@ const CSS = `
   .db-customer-name { font-size: 1rem; font-weight: 700; color: #334155; }
   .db-address-row { display: flex; align-items: flex-start; gap: 8px; }
   .db-address-text { font-size: 0.9rem; color: #475569; line-height: 1.5; font-weight: 500; }
+
+  .db-items-block {
+    background: #f8fafc; padding: 14px; border-radius: 12px; margin-bottom: 14px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .db-items-title { font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom: 4px; }
+  .db-item-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 10px; background: white; border-radius: 8px;
+  }
+  .db-item-info { display: flex; flex-direction: column; gap: 2px; }
+  .db-item-name { font-size: 0.88rem; font-weight: 600; color: #334155; }
+  .db-item-qty { font-size: 0.75rem; color: #64748b; font-weight: 500; }
 
   .db-amount-row {
     display: flex; justify-content: space-between; align-items: center;

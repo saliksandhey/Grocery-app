@@ -11,16 +11,17 @@ export default function Tracking() {
   if (!order) return <div style={{textAlign:'center', marginTop:'50px'}}>Order not found.</div>;
 
   const stepsList = [
-    { status: 'Pending', title: 'Order Placed', icon: <Clock size={24} />, desc: 'Waiting for confirmation.' },
-    { status: 'Packed', title: 'Order Packed', icon: <Package size={24} />, desc: 'Your items are packed.' },
-    { status: 'Out for Delivery', title: 'On the Way', icon: <Truck size={24} />, desc: 'Partner is on the way.' },
-    { status: 'Delivered', title: 'Delivered', icon: <Home size={24} />, desc: 'Order delivered safely.' },
+    { status: 'PLACED', title: 'Order Placed', icon: <Clock size={24} />, desc: 'Your order has been placed successfully.' },
+    { status: 'CONFIRMED', title: 'Order Confirmed', icon: <CheckCircle size={24} />, desc: 'Store has confirmed your order.' },
+    { status: 'ASSIGNED', title: 'Delivery Assigned', icon: <Package size={24} />, desc: 'Delivery partner has been assigned.' },
+    { status: 'OUT_FOR_DELIVERY', title: 'Out for Delivery', icon: <Truck size={24} />, desc: 'Partner is on the way to your location.' },
+    { status: 'DELIVERED', title: 'Delivered', icon: <Home size={24} />, desc: 'Order delivered successfully.' },
   ];
 
   const currentStepIndex = stepsList.findIndex(s => s.status === order.status);
   const stepIndex = currentStepIndex === -1 ? 0 : currentStepIndex;
 
-  if (order.status === 'Cancelled') {
+  if (order.status === 'CANCELLED') {
     return (
       <div style={{ padding: '24px', textAlign: 'center' }}>
         <button onClick={() => navigate(-1)} style={{ marginBottom: '16px', background:'none', border:'none', fontSize:'1rem', display:'flex', alignItems:'center', gap:'8px', cursor:'pointer' }}>
@@ -35,6 +36,17 @@ export default function Tracking() {
     );
   }
 
+  // Calculate estimated delivery time
+  const getEstimatedTime = () => {
+    if (order.status === 'PLACED') return '30-45 minutes';
+    if (order.status === 'CONFIRMED') return '25-35 minutes';
+    if (order.status === 'ASSIGNED') return '20-30 minutes';
+    if (order.status === 'OUT_FOR_DELIVERY') return '10-15 minutes';
+    return null;
+  };
+
+  const estimatedTime = getEstimatedTime();
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: '24px' }}>
@@ -48,10 +60,15 @@ export default function Tracking() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '16px', marginBottom: '24px' }}>
           <div>
             <p style={{ fontSize: '0.875rem', color: 'var(--text-3)', marginBottom: '4px' }}>Current Status</p>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--primary)' }}>{order.status}</h3>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--primary)' }}>{order.status.replace(/_/g, ' ')}</h3>
+            {estimatedTime && (
+              <p style={{ fontSize: '0.8rem', color: '#F59E0B', fontWeight: '600', marginTop: '4px' }}>
+                ⏱️ Estimated delivery: {estimatedTime}
+              </p>
+            )}
           </div>
           <div style={{ backgroundColor: '#f1f5f9', color: 'var(--text-1)', padding: '8px 12px', borderRadius: 'var(--radius-md)', fontWeight: 'bold', fontSize: '0.875rem' }}>
-            â‚¹{order.grand_total}
+            ₹{order.grand_total}
           </div>
         </div>
 
