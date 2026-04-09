@@ -44,17 +44,31 @@ export default function Signup() {
     }
   };
 
+  const handleSkip = () => {
+    navigate('/home', { replace: true });
+  };
+
   const isFormValid = form.name.trim() !== '' && form.phone.trim().length === 10 && form.password.length >= 6 && form.password === form.confirm;
 
   if (success) {
     return (
       <div style={{
-        minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        background: 'linear-gradient(180deg, #ECFDF5 0%, #ffffff 100%)', padding: '24px', fontFamily: 'Inter, sans-serif'
+        minHeight: '100vh',
+        background: 'linear-gradient(180deg, #ECFDF5 0%, #ffffff 100%)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px'
       }}>
         <div style={{ 
-          width: '100%', maxWidth: '380px', background: 'white', borderRadius: '24px', padding: '48px 32px', textAlign: 'center',
-          boxShadow: '0 8px 32px rgba(22, 163, 74, 0.12)', animation: 'fadeSlideUp 0.4s ease-out forwards'
+          width: '100%',
+          maxWidth: '400px',
+          background: 'white',
+          borderRadius: '24px',
+          padding: '48px 32px',
+          textAlign: 'center',
+          boxShadow: '0 12px 40px rgba(22, 163, 74, 0.12)'
         }}>
           <div style={{ 
             display: 'inline-flex', width: '80px', height: '80px', alignItems: 'center', justifyContent: 'center', 
@@ -69,10 +83,6 @@ export default function Signup() {
           </div>
         </div>
         <style>{`
-          @keyframes fadeSlideUp {
-            from { opacity: 0; transform: translateY(15px) scale(0.98); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-          }
           @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         `}</style>
       </div>
@@ -81,13 +91,21 @@ export default function Signup() {
 
   return (
     <div style={{
-      minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      background: 'linear-gradient(180deg, #ECFDF5 0%, #ffffff 100%)', padding: '24px', fontFamily: 'Inter, sans-serif'
+      minHeight: '100vh',
+      background: 'linear-gradient(180deg, #ECFDF5 0%, #ffffff 50%, #F9FAFB 100%)',
+      display: 'flex',
+      flexDirection: 'column',
+      position: 'relative',
+      overflow: 'hidden'
     }}>
       <style>{`
         @keyframes fadeSlideUp {
-          from { opacity: 0; transform: translateY(15px) scale(0.98); }
+          from { opacity: 0; transform: translateY(20px) scale(0.98); }
           to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
         }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         
@@ -96,46 +114,120 @@ export default function Signup() {
         
         .input-wrap { position: relative; transition: all 0.2s; }
         .input-field {
-          width: 100%; height: 50px; border-radius: 14px; border: 2px solid transparent;
-          padding: 12px 16px 12px 42px; font-size: 14px; font-family: Inter, sans-serif;
-          color: #111827; background: #F3F4F6; box-sizing: border-box; transition: all 0.2s ease;
+          width: 100%; height: 52px; border-radius: 14px; border: 2px solid transparent;
+          padding: 12px 16px 12px 44px; font-size: 14px; font-family: Inter, sans-serif;
+          color: #111827; background: #F9FAFB; box-sizing: border-box; transition: all 0.2s ease;
           outline: none; font-weight: 500; user-select: text; -webkit-user-select: text;
         }
         .input-field::placeholder { color: #9CA3AF; font-weight: 400; }
         .input-field:focus {
-          border-color: #16A34A; background: #fff; box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+          border-color: #16A34A; background: #fff; box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.1);
         }
         .input-error {
-          border-color: #EF4444 !important; background: #fff !important; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+          border-color: #EF4444 !important; background: #fff !important; box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1) !important;
         }
         
         .hover-underline:hover { text-decoration: underline; }
       `}</style>
 
-      <div style={{ width: '100%', maxWidth: '380px', display: 'flex', flexDirection: 'column', opacity: isReady ? 1 : 0, animation: 'fadeSlideUp 0.4s ease-out forwards' }}>
-        
-        {/* ── BRANDING ── */}
-        <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-          <div style={{ 
-            display: 'inline-flex', width: '60px', height: '60px', alignItems: 'center', justifyContent: 'center', 
-            background: '#fff', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', marginBottom: '16px', overflow: 'hidden' 
-          }}>
-            <img src={logoImg} alt="Malerkotla Fresh" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          </div>
-          <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#111827', margin: '0 0 4px 0', letterSpacing: '-0.02em' }}>Malerkotla Fresh</h1>
-          <p style={{ color: '#6B7280', fontSize: '13px', margin: 0 }}>Create your account to start shopping</p>
-        </div>
+      {/* Skip Button */}
+      <div style={{
+        position: 'absolute',
+        top: 16,
+        right: 16,
+        zIndex: 10
+      }}>
+        <button
+          onClick={handleSkip}
+          className="press-scale"
+          style={{
+            background: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)',
+            border: '1.5px solid #E5E7EB',
+            borderRadius: '24px',
+            padding: '8px 16px',
+            fontSize: '13px',
+            fontWeight: '600',
+            color: '#6B7280',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
+          }}
+        >
+          Skip
+          <ArrowRight size={14} />
+        </button>
+      </div>
 
-        {/* ── FORM CARD ── */}
-        <div style={{
-          background: '#fff', borderRadius: '24px', padding: '24px', marginTop: '16px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.02)'
-        }}>
+      {/* Decorative Elements */}
+      <div style={{
+        position: 'absolute',
+        top: '-50px',
+        right: '-50px',
+        width: '200px',
+        height: '200px',
+        borderRadius: '50%',
+        background: 'rgba(22, 163, 74, 0.05)',
+        animation: 'float 6s ease-in-out infinite'
+      }} />
+      <div style={{
+        position: 'absolute',
+        bottom: '100px',
+        left: '-30px',
+        width: '150px',
+        height: '150px',
+        borderRadius: '50%',
+        background: 'rgba(34, 197, 94, 0.05)',
+        animation: 'float 8s ease-in-out infinite reverse'
+      }} />
+
+      {/* Main Content */}
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px',
+        position: 'relative',
+        zIndex: 1
+      }}>
+        <div style={{ width: '100%', maxWidth: '400px', opacity: isReady ? 1 : 0, animation: 'fadeSlideUp 0.5s ease-out forwards' }}>
           
-          <div style={{ marginBottom: '24px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: '800', margin: '0 0 4px 0' }}>Join Us! 👋</h2>
-            <p style={{ color: '#6B7280', fontSize: '13px', margin: 0 }}>Fresh groceries at your doorstep</p>
+          {/* ── BRANDING ── */}
+          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+            <div style={{ 
+              display: 'inline-flex', width: '80px', height: '80px', alignItems: 'center', justifyContent: 'center', 
+              background: '#fff', borderRadius: '24px', boxShadow: '0 8px 24px rgba(0,0,0,0.08)', marginBottom: '20px', overflow: 'hidden',
+              border: '2px solid rgba(22, 163, 74, 0.1)'
+            }}>
+              <img src={logoImg} alt="Malerkotla Fresh" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
+            <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#111827', margin: '0 0 8px 0', letterSpacing: '-0.02em' }}>
+              Malerkotla Fresh
+            </h1>
+            <p style={{ color: '#6B7280', fontSize: '14px', margin: 0, fontWeight: '500' }}>
+              Fresh groceries delivered to your doorstep
+            </p>
           </div>
+
+          {/* ── FORM CARD ── */}
+          <div style={{
+            background: '#fff',
+            borderRadius: '24px',
+            padding: '28px',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)',
+            border: '1px solid rgba(229, 231, 235, 0.5)'
+          }}>
+            
+            <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#111827', marginBottom: '4px', marginTop: 0 }}>
+              Create Account
+            </h2>
+            <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '24px', marginTop: 0 }}>
+              Join us and start shopping today
+            </p>
 
           {error && (
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#FEF2F2', color: '#B91C1C', padding: '12px', borderRadius: '12px', fontSize: '13px', marginBottom: '16px' }}>
@@ -225,18 +317,27 @@ export default function Signup() {
             </button>
           </form>
 
-          <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '14px', color: '#6B7280' }}>
-            Already have an account? <Link to="/login" className="hover-underline" style={{ color: '#16A34A', fontWeight: '700', textDecoration: 'none' }}>Login</Link>
+            {/* Sign Up Link */}
+            <div style={{ textAlign: 'center', marginTop: '24px' }}>
+              <p style={{ fontSize: '14px', color: '#6B7280', margin: 0 }}>
+                Already have an account?{' '}
+                <Link
+                  to="/login"
+                  className="hover-underline"
+                  style={{ color: '#16A34A', fontWeight: '700', textDecoration: 'none' }}
+                >
+                  Sign in
+                </Link>
+              </p>
+            </div>
           </div>
-        </div>
 
-        <div style={{ textAlign: 'center', marginTop: '32px', fontSize: '11px', color: '#6B7280', opacity: 0.7 }}>
-           By continuing, you agree to our 
-           <div style={{ marginTop: '4px' }}>
-             <span className="hover-underline" style={{ cursor: 'pointer' }}>Terms of Service</span>
-             <span style={{ margin: '0 8px' }}>•</span>
-             <span className="hover-underline" style={{ cursor: 'pointer' }}>Privacy Policy</span>
-           </div>
+          {/* Footer Links */}
+          <div style={{ textAlign: 'center', marginTop: '32px', fontSize: '11px', color: '#9CA3AF', opacity: 0.8 }}>
+            <span className="hover-underline press-scale" style={{ cursor: 'pointer' }} onClick={() => navigate('/terms')}>Terms of Service</span>
+            <span style={{ margin: '0 8px' }}>•</span>
+            <span className="hover-underline press-scale" style={{ cursor: 'pointer' }} onClick={() => navigate('/privacy')}>Privacy Policy</span>
+          </div>
         </div>
       </div>
     </div>

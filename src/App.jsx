@@ -14,6 +14,9 @@ import CategoriesList from './pages/CategoriesList';
 import Profile from './pages/Profile';
 import ForgotPassword from './pages/ForgotPassword';
 import SavedAddresses from './pages/SavedAddresses';
+import HelpSupport from './pages/HelpSupport';
+import TermsAndConditions from './pages/TermsAndConditions';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 import BottomNav from './components/BottomNav';
 import Header from './components/Header';
 import Admin from './pages/Admin';
@@ -22,7 +25,7 @@ import DeliveryBoy from './pages/DeliveryBoy';
 export default function App() {
   const location = useLocation();
 
-  const isFullscreenPage = ['/', '/login', '/signup', '/checkout', '/success', '/cart', '/forgot-password', '/addresses'].includes(location.pathname) || location.pathname.startsWith('/product') || location.pathname.startsWith('/tracking');
+  const isFullscreenPage = ['/', '/login', '/signup', '/checkout', '/success', '/cart', '/forgot-password', '/addresses', '/help', '/terms', '/privacy'].includes(location.pathname) || location.pathname.startsWith('/product') || location.pathname.startsWith('/tracking');
   const isAdminOrDelivery = location.pathname.startsWith('/admin') || location.pathname.startsWith('/delivery');
   const isCustomerPage = !isAdminOrDelivery;
   
@@ -54,6 +57,9 @@ export default function App() {
           <Route path="/addresses"     element={<SavedAddresses />} />
           <Route path="/success"       element={<Success />} />
           <Route path="/tracking/:id"  element={<Tracking />} />
+          <Route path="/help"          element={<HelpSupport />} />
+          <Route path="/terms"         element={<TermsAndConditions />} />
+          <Route path="/privacy"       element={<PrivacyPolicy />} />
 
           {/* Admin */}
           <Route path="/admin" element={<Admin />} />

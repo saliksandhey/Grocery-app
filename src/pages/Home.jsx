@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, MapPin, User, ChevronDown, ArrowRight, Zap, Clock } from 'lucide-react';
+import { Search, MapPin, User, ChevronDown, ArrowRight, Zap, Clock, Package, Navigation, Truck, CheckCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store';
 import ProductCard from '../components/ProductCard';
@@ -39,17 +39,7 @@ function useCountdown(totalSecs) {
   return { h, m, s };
 }
 
-// ── Static categories ───────────────────────────────────────────
-const STATIC_CATS = [
-  { id: 'veg', name: 'Vegetables', emoji: '🥬', bg: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)' },
-  { id: 'grain', name: 'Grains', emoji: '🌾', bg: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' },
-  { id: 'dairy', name: 'Dairy', emoji: '🥛', bg: 'linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%)' },
-  { id: 'fruit', name: 'Fruits', emoji: '🍎', bg: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)' },
-  { id: 'spice', name: 'Masala', emoji: '🫙', bg: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)' },
-  { id: 'oil', name: 'Oils', emoji: '🛢️', bg: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' },
-];
-
-// ── Skeleton Card ───────────────────────────────────────────────
+// ── Main Component ──────────────────────────────────────────────
 function SkeletonCard() {
   return (
     <div style={{
@@ -100,12 +90,22 @@ export default function Home() {
   const dbCategories = useAppStore(s => s.dbCategories);
   const cart = useAppStore(s => s.cart);
   const isStoreOpen = useAppStore(s => s.isStoreOpen);
+  const currentUser = useAppStore(s => s.currentUser);
+  const allOrders = useAppStore(s => s.orders);
   const isLoading = products.length === 0;
 
   const cartCount = cart.reduce((sum, i) => sum + i.qty, 0);
   const cartTotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
 
   const timer = useCountdown(2 * 3600 + 45 * 60);
+
+  // Get active order (most recent non-delivered, non-cancelled order)
+  const activeOrder = currentUser 
+    ? allOrders.find(o => 
+        o.customer_details?.phone === currentUser.phone && 
+        !['DELIVERED', 'CANCELLED'].includes(o.status)
+      )
+    : null;
 
   // Scroll shadow
   useEffect(() => {
@@ -133,15 +133,12 @@ export default function Home() {
   const recommended = products.slice(4, 10);
   const bestSellers = products.slice(0, 4);
 
-  // Categories merge
-  const categories = dbCategories.length
-    ? dbCategories.map((c, i) => ({
-      id: c.id, name: c.name,
-      emoji: STATIC_CATS[i % STATIC_CATS.length].emoji,
-      bg: STATIC_CATS[i % STATIC_CATS.length].bg,
-      image: c.image_url,
-    }))
-    : STATIC_CATS;
+  // Categories from backend only
+  const categories = dbCategories.map(c => ({
+    id: c.id,
+    name: c.name,
+    image: c.image_url,
+  }));
 
   const promo = PROMOS[promoIdx];
 
@@ -260,6 +257,101 @@ export default function Home() {
       {/* ═══════ CONTENT ═══════ */}
       {!searchQuery && !activeCat ? (
         <>
+          {/* ── LIVE ORDER TRACKING BANNER ── */}
+          {activeOrder && (
+            <div style={{ padding: '12px 16px 0' }}>
+              <Link
+                to={`/tracking/${activeOrder.id}`}
+                className="press-scale"
+                style={{
+                  background: '#fff',
+                  borderRadius: '16px',
+                  padding: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '14px',
+                  boxShadow: '0 4px 16px rgba(22, 163, 74, 0.12)',
+                  border: '1.5px solid #DCFCE7',
+                  textDecoration: 'none',
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}
+              >
+                {/* Animated background pulse */}
+                <div style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: '120px',
+                  height: '120px',
+                  borderRadius: '50%',
+                  background: 'rgba(22, 163, 74, 0.05)',
+                  animation: 'pulse 2s ease-in-out infinite'
+                }} />
+
+                {/* Status Icon */}
+                <div style={{
+                  width: '52px',
+                  height: '52px',
+                  borderRadius: '50%',
+                  background: activeOrder.status === 'OUT_FOR_DELIVERY' 
+                    ? 'linear-gradient(135deg, #F59E0B, #F97316)'
+                    : activeOrder.status === 'PLACED'
+                    ? 'linear-gradient(135deg, #3B82F6, #2563EB)'
+                    : activeOrder.status === 'CONFIRMED' || activeOrder.status === 'PACKED'
+                    ? 'linear-gradient(135deg, #8B5CF6, #7C3AED)'
+                    : 'linear-gradient(135deg, #16A34A, #22C55E)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                  position: 'relative',
+                  zIndex: 1
+                }}>
+                  {activeOrder.status === 'PLACED' && <Clock size={24} color="#fff" strokeWidth={2.5} />}
+                  {activeOrder.status === 'CONFIRMED' && <CheckCircle size={24} color="#fff" strokeWidth={2.5} />}
+                  {activeOrder.status === 'PACKED' && <Package size={24} color="#fff" strokeWidth={2.5} />}
+                  {activeOrder.status === 'ASSIGNED' && <Navigation size={24} color="#fff" strokeWidth={2.5} />}
+                  {activeOrder.status === 'OUT_FOR_DELIVERY' && <Truck size={24} color="#fff" strokeWidth={2.5} />}
+                </div>
+
+                {/* Order Info */}
+                <div style={{ flex: 1, position: 'relative', zIndex: 1 }}>
+                  <div style={{ fontSize: '11px', color: '#9CA3AF', fontWeight: '600', marginBottom: '2px', textTransform: 'uppercase' }}>
+                    Live Order
+                  </div>
+                  <div style={{ fontSize: '15px', fontWeight: '700', color: '#111827', marginBottom: '4px' }}>
+                    {activeOrder.status === 'PLACED' && 'Order Placed'}
+                    {activeOrder.status === 'CONFIRMED' && 'Order Confirmed'}
+                    {activeOrder.status === 'PACKED' && 'Order Packed'}
+                    {activeOrder.status === 'ASSIGNED' && 'Delivery Partner Assigned'}
+                    {activeOrder.status === 'OUT_FOR_DELIVERY' && 'Out for Delivery'}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{
+                      fontSize: '12px',
+                      color: '#16A34A',
+                      fontWeight: '600'
+                    }}>
+                      #{activeOrder.id.slice(0, 8).toUpperCase()}
+                    </span>
+                    <span style={{ fontSize: '11px', color: '#9CA3AF' }}>•</span>
+                    <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: '500' }}>
+                      ₹{activeOrder.grand_total}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Arrow */}
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                  <ArrowRight size={20} color="#16A34A" />
+                </div>
+              </Link>
+            </div>
+          )}
+
           {/* ── PROMO BANNER ── */}
           <div style={{ padding: '12px 16px 0', position: 'relative' }}>
             <div className="press-scale" key={promoIdx} style={{
@@ -338,16 +430,17 @@ export default function Home() {
                     style={{ scrollSnapAlign: 'start', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', flexShrink: 0, width: '72px' }}
                   >
                     <div className="cat-icon" style={{
-                      width: '56px', height: '56px', borderRadius: '50%', background: cat.bg,
+                      width: '56px', height: '56px', borderRadius: '50%', background: '#f3f4f6',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px',
                       transition: 'all 0.2s ease',
                       boxShadow: isActive ? '0 4px 12px rgba(22,163,74,0.2)' : 'inset 0 -2px 6px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.04)',
                       border: isActive ? '2px solid #16A34A' : '2px solid transparent',
+                      overflow: 'hidden'
                     }}>
                       {cat.image ? (
-                        <img src={cat.image} alt={cat.name} style={{ width: '32px', height: '32px', objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.08))' }} loading="lazy" />
+                        <img src={cat.image} alt={cat.name} style={{ width: '100%', height: '100%', objectFit: 'cover', padding: '4px' }} loading="lazy" />
                       ) : (
-                        <span style={{ display: 'block', transform: isActive ? 'scale(1.1)' : 'scale(1)', transition: 'transform 0.2s' }}>{cat.emoji}</span>
+                        <span style={{ fontSize: '24px' }}>📦</span>
                       )}
                     </div>
                     <div style={{ 

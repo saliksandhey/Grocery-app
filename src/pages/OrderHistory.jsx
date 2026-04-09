@@ -1,20 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../store';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, Clock, ShoppingBag, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Package, Clock, ShoppingBag, ChevronDown, ChevronRight, MapPin, Navigation } from 'lucide-react';
 
 const STATUS_CONFIG = {
-  pending:            { bg: '#FEF3C7', color: '#92400E', label: 'Pending' },
-  packed:             { bg: '#DBEAFE', color: '#1E40AF', label: 'Packed' },
-  'out for delivery': { bg: '#E0F2FE', color: '#0369A1', label: 'Out for Delivery' },
-  delivered:          { bg: '#DCFCE7', color: '#166534', label: 'Delivered' },
-  cancelled:          { bg: '#FEE2E2', color: '#991B1B', label: 'Cancelled' },
+  PLACED:             { bg: '#FEF3C7', color: '#92400E', label: 'Placed' },
+  CONFIRMED:          { bg: '#DBEAFE', color: '#1E40AF', label: 'Confirmed' },
+  PACKED:             { bg: '#E9D5FF', color: '#6B21A8', label: 'Packed' },
+  ASSIGNED:           { bg: '#CCFBF1', color: '#115E59', label: 'Assigned' },
+  OUT_FOR_DELIVERY:   { bg: '#FFEDD5', color: '#9A3412', label: 'Out for Delivery' },
+  DELIVERED:          { bg: '#DCFCE7', color: '#166534', label: 'Delivered' },
+  CANCELLED:          { bg: '#FEE2E2', color: '#991B1B', label: 'Cancelled' },
 };
 
-const FILTER_OPTIONS = ['All', 'Delivered', 'Pending', 'Cancelled'];
+const FILTER_OPTIONS = ['All', 'Delivered', 'Placed', 'Confirmed', 'Cancelled'];
 
 function getStatusCfg(status = '') {
-  return STATUS_CONFIG[status.toLowerCase()] || { bg: '#F3F4F6', color: '#374151', label: status };
+  return STATUS_CONFIG[status] || { bg: '#F3F4F6', color: '#374151', label: status };
 }
 
 function SkeletonCard() {
@@ -72,7 +74,7 @@ export default function OrderHistory() {
   const myOrders = allOrders.filter(o => o.customer_details?.phone === currentUser.phone);
   const filteredOrders = activeFilter === 'All'
     ? myOrders
-    : myOrders.filter(o => o.status?.toLowerCase() === activeFilter.toLowerCase());
+    : myOrders.filter(o => o.status === activeFilter.toUpperCase());
 
   const handleReorder = (order) => {
     clearCart();
@@ -204,18 +206,31 @@ export default function OrderHistory() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingBottom: '12px' }}>
                   <div style={{ fontSize: '16px', fontWeight: '800', color: '#16A34A' }}>₹{order.grand_total}</div>
                   <div style={{ display: 'flex', gap: '8px' }}>
+                    {/* Track Order Button - Only for active orders */}
+                    {!['DELIVERED', 'CANCELLED'].includes(order.status) && (
+                      <button className="press-scale" onClick={() => navigate(`/tracking/${order.id}`)} style={{
+                        height: '32px', padding: '0 14px', background: '#16A34A', color: '#fff', border: 'none',
+                        borderRadius: '10px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px',
+                        boxShadow: '0 2px 8px rgba(22,163,74,0.2)'
+                      }}>
+                        <MapPin size={14} />
+                        Track
+                      </button>
+                    )}
                     <button className="press-scale" onClick={() => setExpanded(isOpen ? null : order.id)} style={{
                       height: '32px', padding: '0 14px', background: '#fff', color: '#374151', border: '1.5px solid #E5E7EB',
                       borderRadius: '10px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'
                     }}>
-                      Details {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                      {isOpen ? 'Less' : 'Details'} {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                     </button>
-                    <button className="press-scale" onClick={() => { if(isStoreOpen) handleReorder(order); }} disabled={!isStoreOpen} style={{
-                      height: '32px', padding: '0 14px', background: isStoreOpen ? '#16A34A' : '#9CA3AF', color: '#fff', border: 'none',
-                      borderRadius: '10px', fontSize: '12px', fontWeight: '600', cursor: isStoreOpen ? 'pointer' : 'not-allowed', boxShadow: isStoreOpen ? '0 2px 8px rgba(22,163,74,0.2)' : 'none'
-                    }}>
-                      Reorder
-                    </button>
+                    {order.status === 'DELIVERED' && (
+                      <button className="press-scale" onClick={() => { if(isStoreOpen) handleReorder(order); }} disabled={!isStoreOpen} style={{
+                        height: '32px', padding: '0 14px', background: isStoreOpen ? '#16A34A' : '#9CA3AF', color: '#fff', border: 'none',
+                        borderRadius: '10px', fontSize: '12px', fontWeight: '600', cursor: isStoreOpen ? 'pointer' : 'not-allowed', boxShadow: isStoreOpen ? '0 2px 8px rgba(22,163,74,0.2)' : 'none'
+                      }}>
+                        Reorder
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

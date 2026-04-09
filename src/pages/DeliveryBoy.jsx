@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '../store';
+import { supabase } from '../supabaseClient';
 import {
   Phone, User, CheckCircle2,
   MapPin, AlertCircle,
@@ -122,6 +123,40 @@ export default function DeliveryBoy() {
   const [showPass, setShowPass] = useState(false);
   const [error,    setError]    = useState('');
   const [loading,  setLoading]  = useState(false);
+
+  // Real-time subscription for delivery boy's orders
+  useEffect(() => {
+    if (!currentDeliveryBoy) return;
+
+    console.log('🎧 Setting up real-time updates for delivery boy:', currentDeliveryBoy.id);
+
+    const channel = supabase
+      .channel(`delivery-boy-${currentDeliveryBoy.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `delivery_boy_id=eq.${currentDeliveryBoy.id}`
+        },
+        (payload) => {
+          console.log('🔔 Order update for delivery boy:', payload.eventType, payload.new);
+          // The store's realtime listener will handle the update automatically
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Delivery boy real-time updates active');
+        }
+      });
+
+    // Cleanup subscription on unmount or logout
+    return () => {
+      console.log('🔌 Cleaning up delivery boy real-time updates');
+      supabase.removeChannel(channel);
+    };
+  }, [currentDeliveryBoy]);
 
   /* ─── Login Screen ─── */
   if (!currentDeliveryBoy) {

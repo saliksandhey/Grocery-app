@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAppStore } from '../store';
 
 export default function Splash() {
   const navigate = useNavigate();
+  const currentUser = useAppStore(state => state.currentUser);
   const [isFadingOut, setIsFadingOut] = useState(false);
 
   useEffect(() => {
@@ -13,16 +15,19 @@ export default function Splash() {
 
     // Navigate at 2.5 seconds
     const navTimer = setTimeout(() => {
-      // The prompt specified navigating to Home or Login.
-      // We use '/login' for now and let your app routing dictate the rest.
-      navigate('/login', { replace: true });
+      // Check if user is already logged in
+      if (currentUser) {
+        navigate('/home', { replace: true });
+      } else {
+        navigate('/login', { replace: true });
+      }
     }, 2500);
 
     return () => {
       clearTimeout(fadeOutTimer);
       clearTimeout(navTimer);
     };
-  }, [navigate]);
+  }, [navigate, currentUser]);
 
   return (
     <div

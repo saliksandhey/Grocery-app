@@ -4,7 +4,9 @@ import {
   LayoutDashboard, ShoppingBag, Package, Users, Plus, X,
   Edit, Trash2, Tag, TrendingUp, Clock, CheckCircle2,
   Truck, Search, Bell, LogOut, Eye,
-  Settings, BarChart2, Menu, AlertCircle, MapPin, Phone, IndianRupee
+  Settings, BarChart2, Menu, AlertCircle, MapPin, Phone, IndianRupee,
+  ClipboardList, CheckCircle, Box, UserCheck, Bike, CircleCheck,
+  RefreshCw
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
@@ -84,6 +86,7 @@ export default function Admin() {
   const [isMobile,      setIsMobile]    = useState(window.innerWidth < 768);
   const [searchQ,       setSearchQ]     = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [orderFilter,   setOrderFilter] = useState('active'); // 'active' or 'completed'
 
   useEffect(() => {
     const fn = () => {
@@ -97,6 +100,66 @@ export default function Admin() {
 
   const deliveryBoys  = useAppStore(s => s.deliveryBoys);
   const orders        = useAppStore(s => s.orders);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Real-time subscription for admin order updates
+  useEffect(() => {
+    console.log('🎧 Admin real-time listener active (via store)');
+    // The store already handles real-time updates globally
+    // This is just for logging purposes
+  }, []);
+
+  // Manual refresh function
+  const handleRefreshOrders = async () => {
+    setRefreshing(true);
+    console.log('Manual refresh started');
+    
+    try {
+      const { data: orders, error: ordersError } = await supabase.from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (ordersError) {
+        console.error('Error refreshing orders:', ordersError);
+        showToast('error', 'Failed to refresh orders');
+        return;
+      }
+
+      if (!orders || orders.length === 0) {
+        useAppStore.getState().setOrders([]);
+        showToast('success', 'Orders refreshed');
+        return;
+      }
+
+      // Fetch order items
+      const orderIds = orders.map(o => o.id);
+      const { data: items, error: itemsError } = await supabase
+        .from('order_items')
+        .select('*')
+        .in('order_id', orderIds);
+
+      if (itemsError) {
+        console.error('Error fetching order items:', itemsError);
+        useAppStore.getState().setOrders(orders);
+        return;
+      }
+
+      // Attach items to orders
+      const ordersWithItems = orders.map(order => ({
+        ...order,
+        order_items: (items || []).filter(item => item.order_id === order.id)
+      }));
+
+      useAppStore.getState().setOrders(ordersWithItems);
+      console.log('Orders refreshed successfully');
+      showToast('success', 'Orders refreshed');
+    } catch (error) {
+      console.error('Error during refresh:', error);
+      showToast('error', 'Failed to refresh orders');
+    } finally {
+      setRefreshing(false);
+    }
+  };
   const products      = useAppStore(s => s.products);
   const dbCategories  = useAppStore(s => s.dbCategories);
   const updateOrderStatus = useAppStore(s => s.updateOrderStatus);
@@ -189,10 +252,18 @@ export default function Admin() {
 
   /* derived */
   const q = searchQ.toLowerCase();
-  const filteredOrders   = orders.filter(o => (o.customer_details?.name||'').toLowerCase().includes(q) || (o.id||'').toLowerCase().includes(q));
+  
+  // Filter orders by active/completed
+  const activeOrders = orders.filter(o => !['DELIVERED', 'CANCELLED'].includes(o.status));
+  const completedOrders = orders.filter(o => ['DELIVERED', 'CANCELLED'].includes(o.status));
+  
+  // Apply search filter
+  const filteredOrders = (orderFilter === 'active' ? activeOrders : completedOrders)
+    .filter(o => (o.customer_details?.name||'').toLowerCase().includes(q) || (o.id||'').toLowerCase().includes(q));
+  
   const filteredProducts = products.filter(p => (p.name||'').toLowerCase().includes(q) || (p.category||'').toLowerCase().includes(q));
-  const pendingCount    = orders.filter(o => o.status === 'Pending').length;
-  const deliveredCount  = orders.filter(o => o.status === 'Delivered').length;
+  const pendingCount    = orders.filter(o => o.status === 'PLACED').length;
+  const deliveredCount  = orders.filter(o => o.status === 'DELIVERED').length;
   const revenue         = orders.reduce((s, o) => s + (o.grand_total || 0), 0);
 
   /* nav handler */
@@ -253,31 +324,129 @@ export default function Admin() {
     const handleStatus = async (newStatus) => {
       const res = await updateOrderStatus(order.id, newStatus, 'admin');
       if (res && res.error) showToast('error', res.error);
+      else showToast('success', `Order ${newStatus.toLowerCase()}!`);
     };
 
-    if (order.delivery_boy_id) {
-       if (order.status === 'Delivered') return <span style={{ fontSize:'0.8rem', color:'#059669', display:'flex', alignItems:'center', gap:'6px', fontWeight:500 }}><CheckCircle2 size={14}/> Completed</span>;
-       return <span style={{ fontSize:'0.8rem', color:'#4B5563', display:'flex', alignItems:'center', gap:'6px', fontWeight:500 }}><Truck size={14}/> Assigned</span>;
+    const handleAssign = async (dbId) => {
+      if (!dbId) return;
+      
+      console.log('Assigning delivery boy:', dbId);
+      const result = await assignDeliveryBoy(order.id, dbId);
+      
+      if (result && result.error) {
+        console.error('Assignment failed:', result.error);
+        showToast('error', 'Failed to assign: ' + result.error);
+      } else {
+        console.log('Assignment successful');
+        showToast('success', 'Assigned to delivery partner');
+      }
+    };
+
+    // Terminal states
+    if (order.status === 'DELIVERED') {
+      return (
+        <span style={{ fontSize:'0.75rem', color:'#059669', display:'flex', alignItems:'center', gap:'4px', fontWeight:600 }}>
+          <CheckCircle2 size={14}/> Delivered
+        </span>
+      );
+    }
+    
+    if (order.status === 'CANCELLED') {
+      return (
+        <span style={{ fontSize:'0.75rem', color:'#DC2626', fontWeight:600 }}>
+          Cancelled
+        </span>
+      );
     }
 
-    if (order.status === 'Pending')
-      return (
-        <div style={{display:'flex', gap:'8px'}}>
-          <button onClick={() => handleStatus('Packed')} className="adm-action-btn" style={{ background:'#10B981', color:'white' }}>Accept & Pack</button>
-          <button onClick={() => handleStatus('Cancelled')} className="adm-action-btn" style={{ background:'#FEE2E2', color:'#DC2626' }}>Cancel</button>
-        </div>
-      );
-    if (order.status === 'Packed')
-      return (
-        <select onChange={e => { if(e.target.value) assignDeliveryBoy(order.id, e.target.value); }}
-          style={{ padding:'6px 8px', borderRadius:'6px', border:'1px solid #D1D5DB', background:'#F9FAFB', fontSize:'0.8rem', cursor:'pointer' }}>
-          <option value="">Assign Rider…</option>
-          {deliveryBoys.map(db => <option key={db.id} value={db.id}>{db.name}</option>)}
-        </select>
-      );
-    if (order.status === 'Cancelled')
-      return <span style={{ fontSize:'0.8rem', color:'#DC2626', fontWeight:500 }}>Cancelled</span>;
-    return null;
+    // Step-by-step workflow
+    return (
+      <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+        {/* PLACED - Accept or Cancel */}
+        {order.status === 'PLACED' && (
+          <>
+            <button 
+              onClick={() => handleStatus('CONFIRMED')} 
+              className="adm-action-btn" 
+              style={{ background:'#10B981', color:'white', padding:'6px 12px' }}
+            >
+              ✓ Accept Order
+            </button>
+            <button 
+              onClick={() => handleStatus('CANCELLED')} 
+              className="adm-action-btn" 
+              style={{ background:'#FEE2E2', color:'#DC2626', padding:'6px 12px' }}
+            >
+              ✕ Cancel
+            </button>
+          </>
+        )}
+
+        {/* CONFIRMED - Mark as Packed */}
+        {order.status === 'CONFIRMED' && (
+          <button 
+            onClick={() => handleStatus('PACKED')} 
+            className="adm-action-btn" 
+            style={{ background:'#7C3AED', color:'white', padding:'6px 12px' }}
+          >
+            Mark Packed
+          </button>
+        )}
+
+        {/* PACKED - Assign Delivery Boy */}
+        {order.status === 'PACKED' && !order.delivery_boy_id && (
+          <select 
+            onChange={e => { 
+              if(e.target.value) {
+                handleAssign(e.target.value);
+                e.target.value = ''; // Reset dropdown
+              }
+            }}
+            className="adm-action-btn"
+            style={{ 
+              padding:'8px 12px', 
+              border:'2px solid #10B981', 
+              background:'#fff', 
+              fontSize:'0.8rem', 
+              cursor:'pointer',
+              borderRadius:'8px',
+              fontWeight:700,
+              color:'#111827',
+              outline:'none'
+            }}
+          >
+            <option value=''>Select Rider...</option>
+            {deliveryBoys.map(db => (
+              <option key={db.id} value={db.id}>
+                {db.name} {db.phone ? `(${db.phone})` : ''} {db.status === 'busy' ? '(Busy)' : '(Available)'}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {/* ASSIGNED - Mark Out for Delivery */}
+        {order.status === 'ASSIGNED' && (
+          <button 
+            onClick={() => handleStatus('OUT_FOR_DELIVERY')} 
+            className="adm-action-btn" 
+            style={{ background:'#F97316', color:'white', padding:'6px 12px' }}
+          >
+            Start Delivery
+          </button>
+        )}
+
+        {/* OUT_FOR_DELIVERY - Mark Delivered */}
+        {order.status === 'OUT_FOR_DELIVERY' && (
+          <button 
+            onClick={() => handleStatus('DELIVERED')} 
+            className="adm-action-btn" 
+            style={{ background:'#10B981', color:'white', padding:'6px 12px' }}
+          >
+            ✓ Mark Delivered
+          </button>
+        )}
+      </div>
+    );
   };
 
   /* ─── Generic Modal ─── */
@@ -299,43 +468,11 @@ export default function Admin() {
   /* ─── Order Detail Modal ─── */
   const OrderDetailModal = ({ order, onClose }) => {
     if (!order) return null;
+    
     const items = order.order_items || [];
     const isCOD = order.payment_method === 'cod';
     const assignedRider = deliveryBoys.find(d => d.id === order.delivery_boy_id);
-    const [localStatus, setLocalStatus] = useState(order.status);
-    const [assigning, setAssigning] = useState(false);
-    const isTerminal = localStatus === 'DELIVERED' || localStatus === 'CANCELLED';
-
-    const handleStatusChange = async (newStatus) => {
-      const res = await updateOrderStatus(order.id, newStatus, 'admin');
-      if (res && res.error) {
-        showToast('error', res.error);
-        setLocalStatus(order.status); // Revert to original
-      } else {
-        setLocalStatus(newStatus);
-        showToast('success', `Status updated to "${newStatus}"`);
-      }
-    };
-
-    const handleAssign = async (dbId) => {
-      if (!dbId) return;
-      setAssigning(true);
-      await assignDeliveryBoy(order.id, dbId);
-      showToast('success', 'Assigned to Delivery Partner 🚚');
-      setAssigning(false);
-    };
-
-    const statusDetailMeta = {
-      'PLACED': { bg:'#FEF3C7', color:'#92400E', dot:'#F59E0B' },
-      'CONFIRMED': { bg:'#DBEAFE', color:'#1E40AF', dot:'#3B82F6' },
-      'PACKED': { bg:'#E9D5FF', color:'#6B21A8', dot:'#A855F7' },
-      'ASSIGNED': { bg:'#CCFBF1', color:'#115E59', dot:'#14B8A6' },
-      'OUT_FOR_DELIVERY': { bg:'#FFEDD5', color:'#9A3412', dot:'#F97316' },
-      'DELIVERED': { bg:'#DCFCE7', color:'#166534', dot:'#22C55E' },
-      'CANCELLED': { bg:'#FEE2E2', color:'#991B1B', dot:'#EF4444' }
-    };
-
-    const sm = statusDetailMeta[localStatus] || { bg:'#F1F5F9', color:'#64748B', dot:'#94A3B8' };
+    const meta = statusMeta[order.status] || { bg: '#F1F5F9', color: '#64748B', label: order.status };
 
     return (
       <div
@@ -353,9 +490,8 @@ export default function Admin() {
               </div>
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
-              <span style={{ display:'inline-flex', alignItems:'center', gap:'6px', padding:'6px 12px', borderRadius:'20px', background:sm.bg, color:sm.color, fontSize:'0.8rem', fontWeight:700 }}>
-                <span style={{ width:'6px', height:'6px', borderRadius:'50%', background:sm.dot, display:'inline-block' }} />
-                {localStatus}
+              <span style={{ display:'inline-flex', alignItems:'center', gap:'6px', padding:'6px 12px', borderRadius:'20px', background:meta.bg, color:meta.color, fontSize:'0.8rem', fontWeight:700 }}>
+                {meta.label}
               </span>
               <button onClick={onClose} style={{ background:'#F3F4F6', border:'none', borderRadius:'8px', width:'32px', height:'32px', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#6B7280' }}>
                 <X size={18} />
@@ -404,7 +540,7 @@ export default function Admin() {
                     <div key={idx} style={{ display:'flex', alignItems:'center', gap:'14px', padding:'14px 16px', borderBottom: idx < items.length-1 ? '1px solid #F3F4F6' : 'none', background: idx%2===0 ? '#fff' : '#FAFAFA' }}>
                       {/* Product image */}
                       <div style={{ width:'52px', height:'52px', borderRadius:'10px', overflow:'hidden', border:'1px solid #E5E7EB', flexShrink:0, background:'#F3F4F6' }}>
-                        {img ? <img src={img} alt={name} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.3rem' }}>🛒</div>}
+                        {img ? <img src={img} alt={name} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', background:'#F3F4F6' }}><Package size={24} color="#9CA3AF" /></div>}
                       </div>
                       {/* Info */}
                       <div style={{ flex:1, minWidth:0 }}>
@@ -438,63 +574,28 @@ export default function Admin() {
                 </div>
                 <div style={{ marginTop:'4px' }}>
                   <span style={{ fontSize:'0.75rem', fontWeight:700, padding:'4px 10px', borderRadius:'20px', background: isCOD ? '#FEF2F2' : '#F0FDF4', color: isCOD ? '#DC2626' : '#059669' }}>
-                    {isCOD ? '💵 Cash on Delivery' : '✅ Prepaid'}
+                    {isCOD ? 'Cash on Delivery' : 'Prepaid'}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Status & Actions */}
-            <div style={{ background:'#F8FAFC', border:'1px solid #E5E7EB', borderRadius:'12px', padding:'16px' }}>
-              <div style={{ fontSize:'0.72rem', fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'12px' }}>Update Status</div>
-              {assignedRider ? (
-                <div style={{ display:'flex', alignItems:'center', gap:'8px', padding:'12px', background:'#F3F4F6', borderRadius:'8px', color:'#374151', fontSize:'0.875rem', fontWeight:600 }}>
-                  <Truck size={18} color="#10B981" /> Assigned to Delivery Partner 🚚
-                </div>
-              ) : (
-                <>
-                  <select
-                    value={localStatus}
-                    onChange={e => handleStatusChange(e.target.value)}
-                    disabled={isTerminal}
-                    style={{ width:'100%', padding:'10px 14px', border:'1px solid #D1D5DB', borderRadius:'8px', background: isTerminal ? '#F3F4F6' : '#fff', color: isTerminal ? '#9CA3AF' : '#111827', fontSize:'0.875rem', fontFamily:'inherit', cursor: isTerminal ? 'not-allowed' : 'pointer', marginBottom:'14px', opacity: isTerminal ? 1 : 1 }}
-                  >
-                    {Object.keys(statusMeta).map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-
-                  {/* Quick action buttons */}
-                  <div style={{ display:'flex', flexWrap:'wrap', gap:'8px' }}>
-                    {localStatus === 'PLACED' && (
-                      <button onClick={() => handleStatusChange('CONFIRMED')} style={{ flex:'1 1 auto', padding:'10px 16px', background:'#10B981', color:'white', border:'none', borderRadius:'8px', fontWeight:700, cursor:'pointer', fontSize:'0.875rem' }}>✓ Accept Order</button>
-                    )}
-                    {localStatus === 'PLACED' && (
-                      <button onClick={() => handleStatusChange('CANCELLED')} style={{ flex:'1 1 auto', padding:'10px 16px', background:'#FEE2E2', color:'#DC2626', border:'none', borderRadius:'8px', fontWeight:700, cursor:'pointer', fontSize:'0.875rem' }}>✕ Cancel</button>
-                    )}
-                    {localStatus === 'CONFIRMED' && (
-                      <button onClick={() => handleStatusChange('PACKED')} style={{ flex:'1 1 auto', padding:'10px 16px', background:'#7C3AED', color:'white', border:'none', borderRadius:'8px', fontWeight:700, cursor:'pointer', fontSize:'0.875rem' }}>📦 Mark as Packed</button>
-                    )}
+            {/* Delivery Partner Info */}
+            {assignedRider && (
+              <div style={{ background:'#F8FAFC', border:'1px solid #E5E7EB', borderRadius:'12px', padding:'16px' }}>
+                <div style={{ fontSize:'0.72rem', fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'12px' }}>Delivery Partner</div>
+                <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+                  <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'#10B981', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontWeight:700, fontSize:'1.1rem' }}>
+                    {assignedRider.name.charAt(0).toUpperCase()}
                   </div>
-                </>
-              )}
-
-              {/* Assign rider */}
-              {!assignedRider && localStatus === 'PACKED' && (
-                <div style={{ marginTop:'14px', paddingTop:'14px', borderTop:'1px solid #E5E7EB' }}>
-                  <div style={{ fontSize:'0.8rem', fontWeight:600, color:'#374151', marginBottom:'8px', display:'flex', alignItems:'center', gap:'6px' }}>
-                    <Truck size={14} /> Assign Delivery Boy
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontWeight:700, color:'#111827', fontSize:'0.95rem' }}>{assignedRider.name}</div>
+                    <div style={{ fontSize:'0.8rem', color:'#6B7280' }}>{assignedRider.phone || 'No phone'}</div>
                   </div>
-                  <select
-                    defaultValue={order.delivery_boy_id || ''}
-                    onChange={e => handleAssign(e.target.value)}
-                    disabled={assigning}
-                    style={{ width:'100%', padding:'10px 14px', border:'1px solid #D1D5DB', borderRadius:'8px', background:'#fff', color:'#111827', fontSize:'0.875rem', fontFamily:'inherit', cursor:'pointer' }}
-                  >
-                    <option value=''>Select Rider…</option>
-                    {deliveryBoys.map(db => <option key={db.id} value={db.id}>{db.name} – {db.phone}</option>)}
-                  </select>
+                  <Truck size={24} color="#10B981" />
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -519,6 +620,11 @@ export default function Admin() {
         * { box-sizing: border-box; margin: 0; padding: 0; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
 
         .adm-root {
           display: flex; min-height: 100vh; width: 100%;
@@ -767,7 +873,78 @@ export default function Admin() {
             <div>
               <div className="adm-page-header">
                 <div className="adm-title">Orders Management</div>
-                <div style={{ fontSize:'0.85rem', color:'#6B7280', fontWeight:500 }}>{filteredOrders.length} order{filteredOrders.length!==1?'s':''}</div>
+                <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+                  {/* Refresh Button */}
+                  <button
+                    onClick={handleRefreshOrders}
+                    disabled={refreshing}
+                    style={{
+                      display:'flex',
+                      alignItems:'center',
+                      gap:'6px',
+                      padding:'8px 16px',
+                      background:'#fff',
+                      border:'1.5px solid #E5E7EB',
+                      borderRadius:'10px',
+                      fontSize:'0.8rem',
+                      fontWeight:600,
+                      color: refreshing ? '#9CA3AF' : '#374151',
+                      cursor: refreshing ? 'not-allowed' : 'pointer',
+                      transition:'all 0.2s',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                    }}
+                  >
+                    <RefreshCw 
+                      size={16} 
+                      style={{ 
+                        display:'inline-block',
+                        animation: refreshing ? 'spin 1s linear infinite' : 'none'
+                      }} 
+                    />
+                    {refreshing ? 'Refreshing...' : 'Refresh'}
+                  </button>
+
+                  {/* Filter Tabs */}
+                  <div style={{ display:'flex', background:'#F3F4F6', borderRadius:'10px', padding:'3px', gap:'2px' }}>
+                    <button
+                      onClick={() => setOrderFilter('active')}
+                      style={{
+                        padding:'8px 16px',
+                        borderRadius:'8px',
+                        border:'none',
+                        background: orderFilter === 'active' ? '#fff' : 'transparent',
+                        color: orderFilter === 'active' ? '#111827' : '#6B7280',
+                        fontSize:'0.8rem',
+                        fontWeight:600,
+                        cursor:'pointer',
+                        boxShadow: orderFilter === 'active' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                        transition:'all 0.2s'
+                      }}
+                    >
+                      🔴 Active ({activeOrders.length})
+                    </button>
+                    <button
+                      onClick={() => setOrderFilter('completed')}
+                      style={{
+                        padding:'8px 16px',
+                        borderRadius:'8px',
+                        border:'none',
+                        background: orderFilter === 'completed' ? '#fff' : 'transparent',
+                        color: orderFilter === 'completed' ? '#111827' : '#6B7280',
+                        fontSize:'0.8rem',
+                        fontWeight:600,
+                        cursor:'pointer',
+                        boxShadow: orderFilter === 'completed' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                        transition:'all 0.2s'
+                      }}
+                    >
+                      Completed ({completedOrders.length})
+                    </button>
+                  </div>
+                  <div style={{ fontSize:'0.85rem', color:'#6B7280', fontWeight:500 }}>
+                    {filteredOrders.length} order{filteredOrders.length!==1?'s':''}
+                  </div>
+                </div>
               </div>
               <div className="adm-table-wrap">
                 {/* Desktop table */}
@@ -807,7 +984,7 @@ export default function Admin() {
                                      </div>
                                    ))}
                                    {previewImgs.length === 0 && (
-                                     <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'#F3F4F6', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1rem' }}>🛒</div>
+                                     <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'#F3F4F6', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1rem' }}><Package size={16} color="#9CA3AF" /></div>
                                    )}
                                  </div>
                                  <div style={{ fontSize:'0.75rem', color:'#6B7280' }}>
@@ -868,7 +1045,7 @@ export default function Admin() {
                                 <img src={img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
                               </div>
                             ))}
-                            {previewImgs.length===0 && <div style={{ width:'34px', height:'34px', borderRadius:'8px', background:'#F3F4F6', display:'flex', alignItems:'center', justifyContent:'center' }}>🛒</div>}
+                            {previewImgs.length===0 && <div style={{ width:'34px', height:'34px', borderRadius:'8px', background:'#F3F4F6', display:'flex', alignItems:'center', justifyContent:'center' }}><Package size={18} color="#9CA3AF" /></div>}
                           </div>
                           <span style={{ fontSize:'0.8rem', color:'#6B7280', fontWeight:500 }}>{items.length} item{items.length!==1?'s':''}</span>
                         </div>
